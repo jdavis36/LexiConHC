@@ -106,6 +106,8 @@ void LexiConHCOptionParser::printOptionsHelp(bool command_fail)const{
   AMPLITUDE_JHUGEN_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the JHUGen EFT formalism:\n";
   EFT_JHUGEN_COUPLING_COMMANDS;
+  cout << "- Allowed couplings for the Higgs basis formalism without EFT constraints:\n";
+  HIGGSBASIS_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the Higgs basis EFT formalism:\n";
   EFT_HIGGSBASIS_COUPLING_COMMANDS;
 #undef COUPLING_COMMAND

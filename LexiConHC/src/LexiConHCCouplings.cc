@@ -27,6 +27,14 @@ std::string LexiConHCCouplings::getCouplingName(LexiConHCCouplings::EFT_JHUGen_C
     assert(0);
   }
 }
+std::string LexiConHCCouplings::getCouplingName(LexiConHCCouplings::HiggsBasis_CouplingType type){
+  switch (type){
+    HIGGSBASIS_COUPLING_COMMANDS
+  default:
+    cerr << "LexiConHCCouplings::getCouplingName: Type " << type << " is undefined." << endl;
+    assert(0);
+  }
+}
 std::string LexiConHCCouplings::getCouplingName(LexiConHCCouplings::EFT_HiggsBasis_CouplingType type){
   switch (type){
     EFT_HIGGSBASIS_COUPLING_COMMANDS

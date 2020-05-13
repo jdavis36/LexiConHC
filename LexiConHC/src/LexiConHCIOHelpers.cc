@@ -23,6 +23,9 @@ namespace LexiConHCIOHelpers{
       case bEFT_JHUGen:
         strtype = "eft_jhu";
         break;
+      case bHiggsBasis:
+        strtype = "hbasis";
+	break;
       case bEFT_HiggsBasis:
         strtype = "eft_hbasis";
         break;
