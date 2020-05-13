@@ -9,7 +9,7 @@ namespace LexiConHCIOHelpers{
 
     bEFT_JHUGen,
     bEFT_HiggsBasis,
-
+    bHiggsBasis,
     nIOBases
   };
 
