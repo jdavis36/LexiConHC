@@ -73,7 +73,9 @@ void LexiConHCOptionParser::interpretOption(std::string const& wish, std::string
   else if (wish=="useMCFMAtInput"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
   else if (wish=="useMCFMAtOutput"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
   else if (wish=="distinguish_HWWcouplings"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
-
+  else if (wish=="include_triple_gauge"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
+  else if (wish=="charged_current"){flags[wish] = true; castStringToValue(value, flags[wish]);}
+  else if (wish=="neutral_current"){flags[wish] = true; castStringToValue(value, flags[wish]);}
   // Parameters come next, check if a comma is not found to assign them
   else if (value.find(",")==std::string::npos) parameters[wish] = stod(value);
 
@@ -98,6 +100,9 @@ void LexiConHCOptionParser::printOptionsHelp(bool command_fail)const{
   cout << "- useMCFMAtInput: Use MCFM conventions in the input JHUGen couplings. Assumes the ghv* couplings (ghv1=2 in SM) are divided by 2.\n\n";
   cout << "- useMCFMAtOutput: Use MCFM conventions in the output JHUGen couplings. Divides the ghv* couplings by 2.\n\n";
   cout << "- distinguish_HWWcouplings: Distinguish HZZ and HWW couplings in the JHUGen amplitude basis if it is the input. Default is false.\n\n";
+  cout << "- include_triple_gauge: Return triple gauge couplings. Default is false.\n\n";
+  cout << "- charged_current: Return couplings involving charged current interactions. Default is true.\n\n";
+  cout << "- neutral_current: Return couplings involving charged current interactions. Default is true.\n\n";
 
   cout << "- The format to set any parameter is [specifier]=[value].\n\n";
   cout << "- The format to set any coupling [specifier] to the complex number ([vRe], [vIm]) is [specifier]=[vRe],[vIm].\n\n";
@@ -106,6 +111,8 @@ void LexiConHCOptionParser::printOptionsHelp(bool command_fail)const{
   AMPLITUDE_JHUGEN_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the JHUGen EFT formalism:\n";
   EFT_JHUGEN_COUPLING_COMMANDS;
+  cout << "- Allowed couplings for the Higgs basis formalism without EFT constraints:\n";
+  HIGGSBASIS_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the Higgs basis EFT formalism:\n";
   EFT_HIGGSBASIS_COUPLING_COMMANDS;
 #undef COUPLING_COMMAND

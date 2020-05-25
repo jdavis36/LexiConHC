@@ -25,102 +25,649 @@ void LexiConHCTranslator::translate(){
   auto const& input_couplings = opts.getInputCouplings();
   auto const& basis_input = opts.getInputBasis();
   auto const& basis_output = opts.getOutputBasis();
-
+  bool include_triple_gauge; getValueWithDefault<std::string, bool>(input_flags, "include_triple_gauge", include_triple_gauge, false);
+  bool charged_current; getValueWithDefault<std::string, bool>(input_flags, "charged_current", charged_current, true);
+  bool neutral_current; getValueWithDefault<std::string, bool>(input_flags, "neutral_current", neutral_current, true);
   // Get the translation matrix
-  std::vector<std::vector<double>> tmatrix = getTranslationMatrix(basis_input, basis_output, input_parameters);
+  std::vector<std::vector<double>> tmatrix = getTranslationMatrix(basis_input, basis_output, input_flags, input_parameters);
   // Get the input vector
   std::vector< std::pair<double, double> > vinput = getOrderedInputCouplings(basis_input, input_flags, input_parameters, input_couplings);
   // Assign the output vector
   std::vector< std::pair<double, double> > voutput(tmatrix.size(), std::pair<double, double>(0, 0));
-
+  
   // Do the matrix multiplication
   for (size_t i=0; i<tmatrix.size(); i++){
     auto const& trow = tmatrix.at(i);
     for (size_t j=0; j<trow.size(); j++){
-      voutput.at(j).first += trow.at(j) * vinput.at(j).first;
-      voutput.at(j).second += trow.at(j) * vinput.at(j).second;
+      voutput.at(i).first += trow.at(j) * vinput.at(j).first;
+      voutput.at(i).second += trow.at(j) * vinput.at(j).second;
     }
   }
-
+  // Fix output by subracting by constant vector 
+  if (basis_input == bAmplitude_JHUGen && basis_output == bHiggsBasis){
+     voutput.at(coupl_hbasis_dCz).first -= 1;
+     voutput.at(coupl_hbasis_dCw).first -= 1;
+  }
+  // Offsets for EFT_JHUGen inputs
+  else if(basis_input == bEFT_JHUGen && basis_output == bAmplitude_JHUGen && include_triple_gauge){
+     voutput.at(coupl_ampjhutrip_dV_Z).first += 1;
+     voutput.at(coupl_ampjhutrip_dV_A).first += 1; 
+     voutput.at(coupl_ampjhutrip_dP_Z).first += 1;
+     voutput.at(coupl_ampjhutrip_dM_Z).first += 1;
+     voutput.at(coupl_ampjhutrip_dZZWpWm).first -= 1;
+     // forcing the d2 gamma d3 gamma to be 1
+     voutput.at(coupl_ampjhutrip_dP_A).first = 1;
+     voutput.at(coupl_ampjhutrip_dM_A).first = 1;
+  }
+  else if(basis_input == bEFT_JHUGen && basis_output == bEFT_JHUGen && include_triple_gauge){
+     voutput.at(coupl_eftjhutrip_dV_Z).first += 1;
+     voutput.at(coupl_eftjhutrip_dV_A).first += 1;
+     voutput.at(coupl_eftjhutrip_dP_Z).first += 1;
+     voutput.at(coupl_eftjhutrip_dM_Z).first += 1;
+     voutput.at(coupl_eftjhutrip_dZZWpWm).first -= 1;
+     // forcing the d2 gamma d3 gamma to be 1
+     voutput.at(coupl_eftjhutrip_dP_A).first = 1;
+     voutput.at(coupl_eftjhutrip_dM_A).first = 1;
+  }
+  else if (basis_input == bEFT_JHUGen && basis_output == bHiggsBasis && !include_triple_gauge){
+     voutput.at(coupl_hbasis_dCz).first -= 1;
+     voutput.at(coupl_hbasis_dCw).first -= 1;
+  }
+  else if (basis_input == bEFT_JHUGen && basis_output == bHiggsBasis && include_triple_gauge){
+     voutput.at(coupl_hbasistrip_dCz).first -= 1;
+     voutput.at(coupl_hbasistrip_dCw).first -= 1;
+  }
+  else if (basis_input == bEFT_JHUGen && basis_output == bEFT_HiggsBasis && include_triple_gauge){
+     voutput.at(coupl_efthbasistrip_dCz).first -= 1;
+  }
+  else if (basis_input == bEFT_JHUGen && basis_output == bEFT_HiggsBasis && !include_triple_gauge){
+     voutput.at(coupl_efthbasis_dCz).first -= 1;
+  }
+  // Offsets for Higgs Basis inputs
+  else if (basis_input == bHiggsBasis && basis_output == bAmplitude_JHUGen){
+	if(charged_current==false){
+ 		voutput.at(coupl_ampjhunc_ghz1).first += 2;
+	}
+	else if(neutral_current==false){
+		voutput.at(coupl_ampjhucc_ghw1).first += 2;
+	}
+	else{
+		voutput.at(coupl_ampjhu_ghz1).first += 2;
+	     	voutput.at(coupl_ampjhu_ghw1).first += 2;
+	}
+      }
+  // Offsets for EFT Higgs Basis inputs
+  else if (basis_input == bEFT_HiggsBasis && basis_output == bEFT_JHUGen && include_triple_gauge){
+	voutput.at(coupl_eftjhutrip_ghz1).first += 2;   
+  }
+  else if (basis_input == bEFT_HiggsBasis && basis_output == bEFT_JHUGen && !include_triple_gauge){
+        voutput.at(coupl_eftjhu_ghz1).first += 2;
+  }
+  else if (basis_input == bEFT_HiggsBasis && basis_output == bAmplitude_JHUGen && include_triple_gauge){
+        if(charged_current==false){
+                voutput.at(coupl_ampjhunc_ghz1).first += 2;
+        }
+        else if(neutral_current==false){
+                voutput.at(coupl_ampjhucc_ghw1).first += 2;
+        }
+        else{
+                voutput.at(coupl_ampjhu_ghz1).first += 2;
+                voutput.at(coupl_ampjhu_ghw1).first += 2;
+        }
+ }
+  else if (basis_input == bEFT_HiggsBasis && basis_output == bAmplitude_JHUGen && !include_triple_gauge){
+        if(charged_current==false){
+                voutput.at(coupl_ampjhunc_ghz1).first += 2;
+        }
+        else if(neutral_current==false){
+                voutput.at(coupl_ampjhucc_ghw1).first += 2;
+        }
+        else{
+                voutput.at(coupl_ampjhu_ghz1).first += 2;
+                voutput.at(coupl_ampjhu_ghw1).first += 2;
+        }
+  }
   // Set the results
   interpretOutputCouplings(basis_output, input_flags, input_parameters, voutput);
 }
 
 std::vector<std::vector<double>> LexiConHCTranslator::getTranslationMatrix(
   LexiConHCIOHelpers::IOBasisType const& basis_input, LexiConHCIOHelpers::IOBasisType const& basis_output,
+  std::unordered_map<std::string, bool> const& input_flags,
   std::unordered_map<std::string, double> const& input_parameters
 ) const{
+  bool include_triple_gauge; getValueWithDefault<std::string, bool>(input_flags, "include_triple_gauge", include_triple_gauge, false);
+  bool charged_current; getValueWithDefault<std::string, bool>(input_flags, "charged_current", charged_current, true);
+  bool neutral_current; getValueWithDefault<std::string, bool>(input_flags, "neutral_current", neutral_current, true);
+  double e; getValueWithDefault<std::string, double>(input_parameters, "e", e, DEFVAL_e);
+  double gs; getValueWithDefault<std::string, double>(input_parameters, "gs", gs, DEFVAL_gs);
   double sw; getValueWithDefault<std::string, double>(input_parameters, "sin2ThetaW", sw, DEFVAL_SW);
+  double cw = 1-sw;  
+  double MZ; getValueWithDefault<std::string, double>(input_parameters, "MZ", MZ, DEFVAL_MZ);
+  double MW; getValueWithDefault<std::string, double>(input_parameters, "MW", MW, DEFVAL_MW);
+  double Lambda_z1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_z1", Lambda_z1, DEFVAL_LAMBDA_VI);
+  double Lambda_w1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_w1", Lambda_w1, DEFVAL_LAMBDA_VI);
+  double Lambda_zgs1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_zgs1", Lambda_zgs1, DEFVAL_LAMBDA_VI);
   std::vector<std::vector<double>> res;
 
   // This is where the translation matrixes should be coded carefully.
   // See also the getOrderedInputCouplings and interpretOutputCouplings functions for what the input/output vectors expect for JHUGen conventions (e.g. ghz1_prime2 scaled already by MZ^2/L1ZZ^2, so no need to put that for example).
   if (basis_input == bAmplitude_JHUGen){
     if (basis_output == bAmplitude_JHUGen){
-      res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));
+      res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));//Assign Correct Dimensions of translation matrix
       for (size_t i=0; i<(size_t) nAmplitude_JHUGen_CouplingTypes; i++) res.at(i).at(i)=1;
     }
     else if (basis_output == bEFT_JHUGen){
-      res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
+      res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));      
+    }
+    else if (basis_output == bHiggsBasis){
+      res.assign(nHiggsBasis_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));
+      res[coupl_hbasis_dCz][coupl_ampjhu_ghz1]=.5;
+      res[coupl_hbasis_Czz][coupl_ampjhu_ghz2]=-(2*cw*sw)/pow(e,2);
+      res[coupl_hbasis_Czbx][coupl_ampjhu_ghz1_prime2]= (sw)/(pow(e,2));
+      res[coupl_hbasis_tCzz][coupl_ampjhu_ghz4]= (-2*cw*sw)/pow(e,2);
+      res[coupl_hbasis_dCw][coupl_ampjhu_ghw1]= .5;
+      res[coupl_hbasis_Cww][coupl_ampjhu_ghw2]= (-2*sw)/pow(e,2);
+      res[coupl_hbasis_Cwbx][coupl_ampjhu_ghw1_prime2]= (-2*cw*sw)/pow(e,2);
+      res[coupl_hbasis_tCww][coupl_ampjhu_ghz4]= (-2*sw)/pow(e,2);
+      res[coupl_hbasis_Cza][coupl_ampjhu_ghzgs2]= (-2*sqrt(sw)*sqrt(cw))/pow(e,2);
+      res[coupl_hbasis_tCza][coupl_ampjhu_ghzgs4]= (-2*(sqrt(sw)) * sqrt(cw))/pow(e,2);
+      res[coupl_hbasis_Cabx][coupl_ampjhu_ghzgs1_prime2]= (sqrt(cw)*sqrt(sw))/pow(e,2);
+      res[coupl_hbasis_Caa][coupl_ampjhu_ghgsgs2]= -2/pow(e,2);
+      res[coupl_hbasis_tCaa][coupl_ampjhu_ghgsgs4]= -2/pow(e,2);
+      res[coupl_hbasis_Cgg][coupl_ampjhu_ghg2]= -2/pow(gs,2);
+      res[coupl_hbasis_tCgg][coupl_ampjhu_ghg4]= -2/pow(gs,2);
     }
     else if (basis_output == bEFT_HiggsBasis){
       res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
     }
   }
   else if (basis_input == bEFT_JHUGen){
     if (basis_output == bAmplitude_JHUGen){
-      res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
+	if(neutral_current == false){
+		if(include_triple_gauge){
+			res.assign(nAmplitude_JHUGen_Include_Triple_Charged_Current_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		        res[coupl_ampjhutripcc_ghw1][coupl_eftjhu_ghz1]= 1;
+		        res[coupl_ampjhutripcc_ghw1_prime2][coupl_eftjhu_ghz1_prime2]= 1/pow(MZ,2) * pow(MW,2)/(cw - sw);res[coupl_ampjhutripcc_ghw1_prime2][coupl_eftjhu_ghz2]= (-2*sw)/pow(MZ,2) * pow(MW,2)/(cw - sw); res[coupl_ampjhutripcc_ghw1_prime2][coupl_eftjhu_ghzgs2]= (2*sqrt(sw))/sqrt(cw) *(cw - sw)/pow(MZ,2)*pow(MW,2)/(cw - sw); res[coupl_ampjhutripcc_ghw1_prime2][coupl_eftjhu_ghgsgs2]= (2*sw)/pow(MZ,2)*pow(MW,2)/(cw - sw);
+		        res[coupl_ampjhutripcc_ghw2][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhutripcc_ghw2][coupl_eftjhu_ghzgs2]= 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutripcc_ghw2][coupl_eftjhu_ghgsgs2]= sw;
+		        res[coupl_ampjhutripcc_ghw4][coupl_eftjhu_ghz4] = cw; res[coupl_ampjhutripcc_ghw4][coupl_eftjhu_ghzgs4] = 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutripcc_ghw4][coupl_eftjhu_ghgsgs4] = sw;
+		        res[coupl_ampjhutripcc_dV_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripcc_dV_Z][coupl_eftjhu_ghz4]= (2*sw*cw)/(sw - cw); res[coupl_ampjhutripcc_dV_Z][coupl_eftjhu_ghzgs2]= -2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutripcc_dV_Z][coupl_eftjhu_ghgsgs2]=  (-2*sw*cw)/(sw - cw); //check!
+		        res[coupl_ampjhutripcc_dV_A][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhutripcc_dV_A][coupl_eftjhu_ghz4]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw)); res[coupl_ampjhutripcc_dV_A][coupl_eftjhu_ghgsgs2]= cw;
+		        res[coupl_ampjhutripcc_dP_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripcc_dP_Z][coupl_eftjhu_ghz1_prime2]= sw/(cw - sw);
+   		      //res[coupl_ampjhutrip_dP_A][coupl_eftjhu_ghz1]= 0;  // dP_A is fixed by any relation and should be kept as 1 to preserve symmetry
+      			res[coupl_ampjhutripcc_dM_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)) ; res[coupl_ampjhutripcc_dM_Z][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutripcc_dM_Z][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutripcc_dM_Z][coupl_eftjhu_ghgsgs2]= sw/(cw-sw);
+      	              //res[coupl_ampjhutrip_dM_A][coupl_eftjhu_ghz1]= 0; // dM_A is fixed by any relation and should be kept as 1 to preserve symmetry
+                        res[coupl_ampjhutripcc_dFour_Z][coupl_eftjhu_ghz4]= sw; res[coupl_ampjhutripcc_dFour_Z][coupl_eftjhu_ghzgs2] = (-sqrt(sw)/sqrt(cw) + 2*pow(sw,3/2)/sqrt(cw)); res[coupl_ampjhutripcc_dFour_Z][coupl_eftjhu_ghgsgs4]= -sw;
+                        res[coupl_ampjhutripcc_dFour_A][coupl_eftjhu_ghz4]= -cw; res[coupl_ampjhutripcc_dFour_A][coupl_eftjhu_ghzgs2]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw));  res[coupl_ampjhutripcc_dFour_A][coupl_eftjhu_ghgsgs4] = cw;
+                        res[coupl_ampjhutripcc_dZZWpWm][coupl_eftjhu_ghz1_prime2]=  -1/(cw - sw); res[coupl_ampjhutripcc_dZZWpWm][coupl_eftjhu_ghz4]=  (2*sw)/(cw-sw); res[coupl_ampjhutripcc_dZZWpWm][coupl_eftjhu_ghzgs2]= (-2*sqrt(sw))/sqrt(cw); res[coupl_ampjhutripcc_dZZWpWm][coupl_eftjhu_ghgsgs2]= (2*sw)/(cw-sw);
+                        res[coupl_ampjhutripcc_dZAWpWm][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripcc_dZAWpWm][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutripcc_dZAWpWm][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutripcc_dZAWpWm][coupl_eftjhu_ghgsgs2]=sw/(cw - sw);
+                      //res[coupl_ampjhutrip_dAAWpWm][coupl_eftjhu_ghz1]= 0; //dAAWpWm may be fixed by some constants?
+		}
+		else{
+			res.assign(nAmplitude_JHUGen_Charged_Current_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+			res[coupl_ampjhucc_ghw1][coupl_eftjhu_ghz1]= 1;
+                        res[coupl_ampjhucc_ghw1_prime2][coupl_eftjhu_ghz1_prime2]= 1/pow(MZ,2) * pow(MW,2)/(cw - sw);res[coupl_ampjhucc_ghw1_prime2][coupl_eftjhu_ghz2]= (-2*sw)/pow(MZ,2) * pow(MW,2)/(cw - sw); res[coupl_ampjhucc_ghw1_prime2][coupl_eftjhu_ghzgs2]= (2*sqrt(sw))/sqrt(cw) *(cw - sw)/pow(MZ,2)*pow(MW,2)/(cw - sw); res[coupl_ampjhucc_ghw1_prime2][coupl_eftjhu_ghgsgs2]= (2*sw)/pow(MZ,2)*pow(MW,2)/(cw - sw);
+                        res[coupl_ampjhucc_ghw2][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhucc_ghw2][coupl_eftjhu_ghzgs2]= 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhucc_ghw2][coupl_eftjhu_ghgsgs2]= sw;
+                        res[coupl_ampjhucc_ghw4][coupl_eftjhu_ghz4] = cw; res[coupl_ampjhucc_ghw4][coupl_eftjhu_ghzgs4] = 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhucc_ghw4][coupl_eftjhu_ghgsgs4] = sw;
+                    }
+	}
+        else if(charged_current == false){
+		if(include_triple_gauge){
+		      res.assign(nAmplitude_JHUGen_Include_Triple_Neutral_Current_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		      res[coupl_ampjhutripnc_ghz1][coupl_eftjhu_ghz1]= 1;
+		      res[coupl_ampjhutripnc_ghz1_prime2][coupl_eftjhu_ghz1_prime2]= 1;
+		      res[coupl_ampjhutripnc_ghz2][coupl_eftjhu_ghz2]= 1;
+		      res[coupl_ampjhutripnc_ghz4][coupl_eftjhu_ghz4]= 1;
+		      res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_eftjhu_ghz1_prime2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_eftjhu_ghz2]= (-2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_eftjhu_ghzgs2]= 2; res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_eftjhu_ghgsgs2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw);
+		      res[coupl_ampjhutripnc_ghzgs2][coupl_eftjhu_ghzgs2]= 1;
+		      res[coupl_ampjhutripnc_ghzgs4][coupl_eftjhu_ghzgs4]= 1;
+		      res[coupl_ampjhutripnc_ghgsgs2][coupl_eftjhu_ghgsgs2]= 1;
+		      res[coupl_ampjhutripnc_ghgsgs4][coupl_eftjhu_ghgsgs4]= 1;
+		      res[coupl_ampjhutripnc_ghg2][coupl_eftjhu_ghg2]= 1;
+		      res[coupl_ampjhutripnc_ghg4][coupl_eftjhu_ghg4]= 1;
+		      res[coupl_ampjhutripnc_dV_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripnc_dV_Z][coupl_eftjhu_ghz4]= (2*sw*cw)/(sw - cw); res[coupl_ampjhutripnc_dV_Z][coupl_eftjhu_ghzgs2]= -2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutripnc_dV_Z][coupl_eftjhu_ghgsgs2]=  (-2*sw*cw)/(sw - cw); //check!
+		      res[coupl_ampjhutripnc_dV_A][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhutripnc_dV_A][coupl_eftjhu_ghz4]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw)); res[coupl_ampjhutripnc_dV_A][coupl_eftjhu_ghgsgs2]= cw;
+		      res[coupl_ampjhutripnc_dP_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripnc_dP_Z][coupl_eftjhu_ghz1_prime2]= sw/(cw - sw);
+	              //res[coupl_ampjhutrip_dP_A][coupl_eftjhu_ghz1]= 0;  // dP_A is fixed by any relation and should be kept as 1 to preserve symmetry
+		      res[coupl_ampjhutripnc_dM_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)) ; res[coupl_ampjhutripnc_dM_Z][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutripnc_dM_Z][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutripnc_dM_Z][coupl_eftjhu_ghgsgs2]= sw/(cw-sw);
+                    //res[coupl_ampjhutrip_dM_A][coupl_eftjhu_ghz1]= 0; // dM_A is fixed by any relation and should be kept as 1 to preserve symmetry
+                      res[coupl_ampjhutripnc_dFour_Z][coupl_eftjhu_ghz4]= sw; res[coupl_ampjhutripnc_dFour_Z][coupl_eftjhu_ghzgs2] = (-sqrt(sw)/sqrt(cw) + 2*pow(sw,3/2)/sqrt(cw)); res[coupl_ampjhutripnc_dFour_Z][coupl_eftjhu_ghgsgs4]= -sw;
+                      res[coupl_ampjhutripnc_dFour_A][coupl_eftjhu_ghz4]= -cw; res[coupl_ampjhutripnc_dFour_A][coupl_eftjhu_ghzgs2]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw));  res[coupl_ampjhutripnc_dFour_A][coupl_eftjhu_ghgsgs4] = cw;
+                      res[coupl_ampjhutripnc_dZZWpWm][coupl_eftjhu_ghz1_prime2]=  -1/(cw - sw); res[coupl_ampjhutripnc_dZZWpWm][coupl_eftjhu_ghz4]=  (2*sw)/(cw-sw); res[coupl_ampjhutripnc_dZZWpWm][coupl_eftjhu_ghzgs2]= (-2*sqrt(sw))/sqrt(cw); res[coupl_ampjhutripnc_dZZWpWm][coupl_eftjhu_ghgsgs2]= (2*sw)/(cw-sw);
+                      res[coupl_ampjhutripnc_dZAWpWm][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutripnc_dZAWpWm][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutripnc_dZAWpWm][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutripnc_dZAWpWm][coupl_eftjhu_ghgsgs2]=sw/(cw - sw);
+                   //res[coupl_ampjhutrip_dAAWpWm][coupl_eftjhu_ghz1]= 0; //dAAWpWm may be fixed by some constants?
+		}
+		else{
+		      res.assign(nAmplitude_JHUGen_Neutral_Current_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		      res[coupl_ampjhunc_ghz1][coupl_eftjhu_ghz1]= 1;
+	  	      res[coupl_ampjhunc_ghz1_prime2][coupl_eftjhu_ghz1_prime2]= 1;
+		      res[coupl_ampjhunc_ghz2][coupl_eftjhu_ghz2]= 1;
+		      res[coupl_ampjhunc_ghz4][coupl_eftjhu_ghz4]= 1;
+      		      res[coupl_ampjhunc_ghzgs1_prime2][coupl_eftjhu_ghz1_prime2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhunc_ghzgs1_prime2][coupl_eftjhu_ghz2]= (-2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhunc_ghzgs1_prime2][coupl_eftjhu_ghzgs2]= 2; res[coupl_ampjhunc_ghzgs1_prime2][coupl_eftjhu_ghgsgs2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw);
+		      res[coupl_ampjhunc_ghzgs2][coupl_eftjhu_ghzgs2]= 1;
+		      res[coupl_ampjhunc_ghzgs4][coupl_eftjhu_ghzgs4]= 1;
+		      res[coupl_ampjhunc_ghgsgs2][coupl_eftjhu_ghgsgs2]= 1;
+		      res[coupl_ampjhunc_ghgsgs4][coupl_eftjhu_ghgsgs4]= 1;
+		      res[coupl_ampjhunc_ghg2][coupl_eftjhu_ghg2]= 1;
+		      res[coupl_ampjhunc_ghg4][coupl_eftjhu_ghg4]= 1;
+		}
+	}
+	else{
+	      if(include_triple_gauge){
+		      res.assign(nAmplitude_JHUGen_Include_Triple_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		      res[coupl_ampjhutrip_ghz1][coupl_eftjhu_ghz1]= 1;
+		      res[coupl_ampjhutrip_ghz1_prime2][coupl_eftjhu_ghz1_prime2]= 1;
+		      res[coupl_ampjhutrip_ghz2][coupl_eftjhu_ghz2]= 1;
+		      res[coupl_ampjhutrip_ghz4][coupl_eftjhu_ghz4]= 1;
+		      res[coupl_ampjhutrip_ghw1][coupl_eftjhu_ghz1]= 1;
+		      res[coupl_ampjhutrip_ghw1_prime2][coupl_eftjhu_ghz1_prime2]= 1/pow(MZ,2) * pow(MW,2)/(cw - sw);res[coupl_ampjhutrip_ghw1_prime2][coupl_eftjhu_ghz2]= (-2*sw)/pow(MZ,2) * pow(MW,2)/(cw - sw); res[coupl_ampjhutrip_ghw1_prime2][coupl_eftjhu_ghzgs2]= (2*sqrt(sw))/sqrt(cw) *(cw - sw)/pow(MZ,2)*pow(MW,2)/(cw - sw); res[coupl_ampjhutrip_ghw1_prime2][coupl_eftjhu_ghgsgs2]= (2*sw)/pow(MZ,2)*pow(MW,2)/(cw - sw);
+		      res[coupl_ampjhutrip_ghw2][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhutrip_ghw2][coupl_eftjhu_ghzgs2]= 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutrip_ghw2][coupl_eftjhu_ghgsgs2]= sw;
+		      res[coupl_ampjhutrip_ghw4][coupl_eftjhu_ghz4] = cw; res[coupl_ampjhutrip_ghw4][coupl_eftjhu_ghzgs4] = 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutrip_ghw4][coupl_eftjhu_ghgsgs4] = sw;
+		      res[coupl_ampjhutrip_ghzgs1_prime2][coupl_eftjhu_ghz1_prime2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhutrip_ghzgs1_prime2][coupl_eftjhu_ghz2]= (-2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhutrip_ghzgs1_prime2][coupl_eftjhu_ghzgs2]= 2; res[coupl_ampjhutrip_ghzgs1_prime2][coupl_eftjhu_ghgsgs2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw);
+		      res[coupl_ampjhutrip_ghzgs2][coupl_eftjhu_ghzgs2]= 1;
+		      res[coupl_ampjhutrip_ghzgs4][coupl_eftjhu_ghzgs4]= 1;
+		      res[coupl_ampjhutrip_ghgsgs2][coupl_eftjhu_ghgsgs2]= 1;
+		      res[coupl_ampjhutrip_ghgsgs4][coupl_eftjhu_ghgsgs4]= 1;
+		      res[coupl_ampjhutrip_ghg2][coupl_eftjhu_ghg2]= 1;
+		      res[coupl_ampjhutrip_ghg4][coupl_eftjhu_ghg4]= 1;
+		      res[coupl_ampjhutrip_dV_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutrip_dV_Z][coupl_eftjhu_ghz4]= (2*sw*cw)/(sw - cw); res[coupl_ampjhutrip_dV_Z][coupl_eftjhu_ghzgs2]= -2*sqrt(sw)*sqrt(cw); res[coupl_ampjhutrip_dV_Z][coupl_eftjhu_ghgsgs2]=  (-2*sw*cw)/(sw - cw); //check!
+		      res[coupl_ampjhutrip_dV_A][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhutrip_dV_A][coupl_eftjhu_ghz4]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw)); res[coupl_ampjhutrip_dV_A][coupl_eftjhu_ghgsgs2]= cw;
+		      res[coupl_ampjhutrip_dP_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutrip_dP_Z][coupl_eftjhu_ghz1_prime2]= sw/(cw - sw);
+		      //res[coupl_ampjhutrip_dP_A][coupl_eftjhu_ghz1]= 0;  // dP_A is fixed by any relation and should be kept as 1 to preserve symmetry 
+		      res[coupl_ampjhutrip_dM_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)) ; res[coupl_ampjhutrip_dM_Z][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutrip_dM_Z][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutrip_dM_Z][coupl_eftjhu_ghgsgs2]= sw/(cw-sw);
+		      //res[coupl_ampjhutrip_dM_A][coupl_eftjhu_ghz1]= 0; // dM_A is fixed by any relation and should be kept as 1 to preserve symmetry
+		      res[coupl_ampjhutrip_dFour_Z][coupl_eftjhu_ghz4]= sw; res[coupl_ampjhutrip_dFour_Z][coupl_eftjhu_ghzgs2] = (-sqrt(sw)/sqrt(cw) + 2*pow(sw,3/2)/sqrt(cw)); res[coupl_ampjhutrip_dFour_Z][coupl_eftjhu_ghgsgs4]= -sw;
+		      res[coupl_ampjhutrip_dFour_A][coupl_eftjhu_ghz4]= -cw; res[coupl_ampjhutrip_dFour_A][coupl_eftjhu_ghzgs2]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw));  res[coupl_ampjhutrip_dFour_A][coupl_eftjhu_ghgsgs4] = cw;
+		      res[coupl_ampjhutrip_dZZWpWm][coupl_eftjhu_ghz1_prime2]=  -1/(cw - sw); res[coupl_ampjhutrip_dZZWpWm][coupl_eftjhu_ghz4]=  (2*sw)/(cw-sw); res[coupl_ampjhutrip_dZZWpWm][coupl_eftjhu_ghzgs2]= (-2*sqrt(sw))/sqrt(cw); res[coupl_ampjhutrip_dZZWpWm][coupl_eftjhu_ghgsgs2]= (2*sw)/(cw-sw);
+		      res[coupl_ampjhutrip_dZAWpWm][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_ampjhutrip_dZAWpWm][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_ampjhutrip_dZAWpWm][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_ampjhutrip_dZAWpWm][coupl_eftjhu_ghgsgs2]=sw/(cw - sw);
+		      //res[coupl_ampjhutrip_dAAWpWm][coupl_eftjhu_ghz1]= 0; //dAAWpWm may be fixed by some constants?
+	      }
+     	      else{
+      		      res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		      res[coupl_ampjhu_ghz1][coupl_eftjhu_ghz1]= 1;
+		      res[coupl_ampjhu_ghz1_prime2][coupl_eftjhu_ghz1_prime2]= 1;
+		      res[coupl_ampjhu_ghz2][coupl_eftjhu_ghz2]= 1;
+		      res[coupl_ampjhu_ghz4][coupl_eftjhu_ghz4]= 1;
+		      res[coupl_ampjhu_ghw1][coupl_eftjhu_ghz1]= 1;
+		      res[coupl_ampjhu_ghw1_prime2][coupl_eftjhu_ghz1_prime2]= 1/pow(MZ,2) * pow(MW,2)/(cw - sw);res[coupl_ampjhu_ghw1_prime2][coupl_eftjhu_ghz2]= (-2*sw)/pow(MZ,2) * pow(MW,2)/(cw - sw); res[coupl_ampjhu_ghw1_prime2][coupl_eftjhu_ghzgs2]= (2*sqrt(sw))/sqrt(cw) *(cw - sw)/pow(MZ,2)*pow(MW,2)/(cw - sw); res[coupl_ampjhu_ghw1_prime2][coupl_eftjhu_ghgsgs2]= (2*sw)/pow(MZ,2)*pow(MW,2)/(cw - sw);
+      		      res[coupl_ampjhu_ghw2][coupl_eftjhu_ghz2]= cw; res[coupl_ampjhu_ghw2][coupl_eftjhu_ghzgs2]= 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhu_ghw2][coupl_eftjhu_ghgsgs2]= sw;
+		      res[coupl_ampjhu_ghw4][coupl_eftjhu_ghz4] = cw; res[coupl_ampjhu_ghw4][coupl_eftjhu_ghzgs4] = 2*sqrt(sw)*sqrt(cw); res[coupl_ampjhu_ghw4][coupl_eftjhu_ghgsgs4] = sw;
+		      res[coupl_ampjhu_ghzgs1_prime2][coupl_eftjhu_ghz1_prime2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhu_ghzgs1_prime2][coupl_eftjhu_ghz2]= (-2*sqrt(sw)*sqrt(cw))/(cw - sw); res[coupl_ampjhu_ghzgs1_prime2][coupl_eftjhu_ghzgs2]= 2; res[coupl_ampjhu_ghzgs1_prime2][coupl_eftjhu_ghgsgs2]= (2*sqrt(sw)*sqrt(cw))/(cw - sw);
+		      res[coupl_ampjhu_ghzgs2][coupl_eftjhu_ghzgs2]= 1;
+		      res[coupl_ampjhu_ghzgs4][coupl_eftjhu_ghzgs4]= 1;
+		      res[coupl_ampjhu_ghgsgs2][coupl_eftjhu_ghgsgs2]= 1;
+		      res[coupl_ampjhu_ghgsgs4][coupl_eftjhu_ghgsgs4]= 1;
+		      res[coupl_ampjhu_ghg2][coupl_eftjhu_ghg2]= 1;
+		      res[coupl_ampjhu_ghg4][coupl_eftjhu_ghg4]= 1;
+       		}
+    	}
+    
+}
+    else if (basis_output == bEFT_JHUGen){
+      if(include_triple_gauge){
+        res.assign(nEFT_JHUGen_Include_Triple_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+	res[coupl_eftjhutrip_ghz1][coupl_eftjhu_ghz1]=1;
+	res[coupl_eftjhutrip_ghz1_prime2][coupl_eftjhu_ghz1_prime2]=1;
+	res[coupl_eftjhutrip_ghz2][coupl_eftjhu_ghz2]=1;
+	res[coupl_eftjhutrip_ghz4][coupl_eftjhu_ghz4]=1;
+	res[coupl_eftjhutrip_ghzgs2][coupl_eftjhu_ghzgs4]=1;
+	res[coupl_eftjhutrip_ghzgs4][coupl_eftjhu_ghzgs4]=1;
+	res[coupl_eftjhutrip_ghgsgs2][coupl_eftjhu_ghgsgs2]=1;
+	res[coupl_eftjhutrip_ghgsgs4][coupl_eftjhu_ghgsgs4]=1;
+	res[coupl_eftjhutrip_ghg2][coupl_eftjhu_ghg2]=1;
+	res[coupl_eftjhutrip_ghg4][coupl_eftjhu_ghg4]=1;
+	res[coupl_eftjhutrip_dV_Z][coupl_eftjhu_ghz1_prime2]=-1/(2*(cw - sw));
+	res[coupl_eftjhutrip_dV_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_eftjhutrip_dV_Z][coupl_eftjhu_ghz4]= (2*sw*cw)/(sw - cw); res[coupl_eftjhutrip_dV_Z][coupl_eftjhu_ghzgs2]= -2*sqrt(sw)*sqrt(cw); res[coupl_eftjhutrip_dV_Z][coupl_eftjhu_ghgsgs2]=  (-2*sw*cw)/(sw - cw); //check!
+        res[coupl_eftjhutrip_dV_A][coupl_eftjhu_ghz2]= cw; res[coupl_eftjhutrip_dV_A][coupl_eftjhu_ghz4]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw)); res[coupl_eftjhutrip_dV_A][coupl_eftjhu_ghgsgs2]= cw;
+        res[coupl_eftjhutrip_dP_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_eftjhutrip_dP_Z][coupl_eftjhu_ghz1_prime2]= sw/(cw - sw);
+      // res[coupl_ampjhutrip_dP_A][coupl_eftjhu_ghz1]= 0;  // dP_A is fixed by any relation and should be kept as 1 to preserve symmetry
+        res[coupl_eftjhutrip_dM_Z][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)) ; res[coupl_eftjhutrip_dM_Z][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_eftjhutrip_dM_Z][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_eftjhutrip_dM_Z][coupl_eftjhu_ghgsgs2]= sw/(cw-sw);
+      //res[coupl_ampjhutrip_dM_A][coupl_eftjhu_ghz1]= 0; // dM_A is fixed by any relation and should be kept as 1 to preserve symmetry
+        res[coupl_eftjhutrip_dFour_Z][coupl_eftjhu_ghz4]= sw; res[coupl_eftjhutrip_dFour_Z][coupl_eftjhu_ghzgs2] = (-sqrt(sw)/sqrt(cw) + 2*pow(sw,3/2)/sqrt(cw)); res[coupl_eftjhutrip_dFour_Z][coupl_eftjhu_ghgsgs4]= -sw;
+        res[coupl_eftjhutrip_dFour_A][coupl_eftjhu_ghz4]= -cw; res[coupl_eftjhutrip_dFour_A][coupl_eftjhu_ghzgs2]= (sqrt(cw)/sqrt(sw) - 2*sqrt(sw)*sqrt(cw));  res[coupl_eftjhutrip_dFour_A][coupl_eftjhu_ghgsgs4] = cw;
+        res[coupl_eftjhutrip_dZZWpWm][coupl_eftjhu_ghz1_prime2]=  -1/(cw - sw); res[coupl_eftjhutrip_dZZWpWm][coupl_eftjhu_ghz4]=  (2*sw)/(cw-sw); res[coupl_eftjhutrip_dZZWpWm][coupl_eftjhu_ghzgs2]= (-2*sqrt(sw))/sqrt(cw); res[coupl_eftjhutrip_dZZWpWm][coupl_eftjhu_ghgsgs2]= (2*sw)/(cw-sw);
+        res[coupl_eftjhutrip_dZAWpWm][coupl_eftjhu_ghz1_prime2]= -1/(2*(cw - sw)); res[coupl_eftjhutrip_dZAWpWm][coupl_eftjhu_ghz4]= sw/(cw-sw); res[coupl_eftjhutrip_dZAWpWm][coupl_eftjhu_ghzgs2]= -sqrt(sw)/sqrt(cw); res[coupl_eftjhutrip_dZAWpWm][coupl_eftjhu_ghgsgs2]=sw/(cw - sw);
+        //res[coupl_ampjhutrip_dAAWpWm][coupl_eftjhu_ghz1]= 0; //dAAWpWm may be fixed by some constants?
+      }
+      else{
+        res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+        for (size_t i=0; i<(size_t) nEFT_JHUGen_CouplingTypes; i++) res.at(i).at(i)=1;
+      }
+    }
+    else if (basis_output == bHiggsBasis){
+	if(include_triple_gauge){
+		res.assign(nHiggsBasis_Include_Triple_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		res[coupl_hbasistrip_dCz][coupl_eftjhu_ghz1] = .5;               
+		res[coupl_hbasistrip_Czz][coupl_eftjhu_ghz2] = -((2*cw*sw)/pow(e,2)); 
+		res[coupl_hbasistrip_Czbx][coupl_eftjhu_ghz1_prime2] = sw/pow(e,2);                                
+		res[coupl_hbasistrip_tCzz][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2));                
+		res[coupl_hbasistrip_dCw][coupl_eftjhu_ghz1] = .5;
+                res[coupl_hbasistrip_Cww][coupl_eftjhu_ghz2] =  -(2*cw*sw)/pow(e,2); res[coupl_hbasistrip_Cww][coupl_eftjhu_ghzgs2] = -((4*cw*pow(sw,3/2))/pow(e,2)); res[coupl_hbasistrip_Cww][coupl_eftjhu_ghgsgs2] =  -((2*pow(sw,2))/pow(e,2));
+                res[coupl_hbasistrip_Cwbx][coupl_eftjhu_ghz1_prime2] = (pow(MW,2)*sw)/(pow(e,2)*pow(MZ,2)*(cw - sw)); res[coupl_hbasistrip_Cwbx][coupl_eftjhu_ghz2] = -((2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw))); res[coupl_hbasistrip_Cwbx][coupl_eftjhu_ghzgs2] = -((2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw))); res[coupl_hbasistrip_Cwbx][coupl_eftjhu_ghgsgs2] = (2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw));
+                res[coupl_hbasistrip_tCww][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2)); res[coupl_hbasistrip_tCww][coupl_eftjhu_ghzgs4] = -((4*sqrt(cw)*pow(sw,3/2))/pow(e,2)); res[coupl_hbasistrip_tCww][coupl_eftjhu_ghgsgs4] =  -((2*pow(sw,2))/pow(e,2));
+		res[coupl_hbasistrip_Cza][coupl_eftjhu_ghzgs2] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));                
+		res[coupl_hbasistrip_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));                
+		res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghz1_prime2] = (2*cw*pow(MZ,2)*sw)/(pow(e,2)*(cw - sw)); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghz2] = -((2*cw*sw)/(pow(e,2)*(cw - sw))); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghzgs2] = (2*sqrt(cw)*sqrt(sw))/pow(e,2); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghgsgs2] = (2*cw*sw)/(pow(e,2)*(cw - sw));
+		res[coupl_hbasistrip_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));                
+		res[coupl_hbasistrip_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));                
+		res[coupl_hbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);                
+		res[coupl_hbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);                
+      		res[coupl_hbasistrip_dKa][coupl_eftjhu_ghz2] = cw/2; res[coupl_hbasistrip_dKa][coupl_eftjhu_ghzgs2] = 1/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); res[coupl_hbasistrip_dKa][coupl_eftjhu_ghgsgs2] = cw/2;         
+		res[coupl_hbasistrip_tKa][coupl_eftjhu_ghz4] = -cw/2; res[coupl_hbasistrip_tKa][coupl_eftjhu_ghzgs2] = 1/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); res[coupl_hbasistrip_tKa][coupl_eftjhu_ghz4] = cw/2;                
+		res[coupl_hbasistrip_dKz][coupl_eftjhu_ghz1_prime2] = -(1/(4*(cw - sw))); res[coupl_hbasistrip_dKz][coupl_eftjhu_ghz4] = (cw*sw)/(-cw + sw); res[coupl_hbasistrip_dKz][coupl_eftjhu_ghzgs2] = -cw*sw; res[coupl_hbasistrip_dKz][coupl_eftjhu_ghgsgs2] = -((cw*sw)/(-cw + sw));
+		res[coupl_hbasistrip_tKz][coupl_eftjhu_ghz4] = sw/2; res[coupl_hbasistrip_tKz][coupl_eftjhu_ghzgs2] = 1/2 *(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)); res[coupl_hbasistrip_tKz][coupl_eftjhu_ghgsgs2] = -sw/2;                
+		res[coupl_hbasistrip_dg1z][coupl_eftjhu_ghz1_prime2] = -(1/(2*(cw - sw))); res[coupl_hbasistrip_dg1z][coupl_eftjhu_ghz4] = sw/(cw - sw); res[coupl_hbasistrip_dg1z][coupl_eftjhu_ghzgs2] = -(sqrt(sw)/sqrt(cw)); res[coupl_hbasistrip_dg1z][coupl_eftjhu_ghgsgs2] = sw/(cw-sw);               
+	}
+	else{
+		res.assign(nHiggsBasis_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+		res[coupl_hbasis_dCz][coupl_eftjhu_ghz1] = .5;
+                res[coupl_hbasis_Czz][coupl_eftjhu_ghz2] = -((2*cw*sw)/pow(e,2));
+                res[coupl_hbasis_Czbx][coupl_eftjhu_ghz1_prime2] = sw/pow(e,2);
+                res[coupl_hbasis_tCzz][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2));
+                res[coupl_hbasis_dCw][coupl_eftjhu_ghz1] = .5;
+                res[coupl_hbasis_Cww][coupl_eftjhu_ghz2] =  -(2*cw*sw)/pow(e,2); res[coupl_hbasis_Cww][coupl_eftjhu_ghzgs2] = -((4*cw*pow(sw,3/2))/pow(e,2)); res[coupl_hbasis_Cww][coupl_eftjhu_ghgsgs2] =  -((2*pow(sw,2))/pow(e,2));
+                res[coupl_hbasis_Cwbx][coupl_eftjhu_ghz1_prime2] = (pow(MW,2)*sw)/(pow(e,2)*pow(MZ,2)*(cw - sw)); res[coupl_hbasis_Cwbx][coupl_eftjhu_ghz2] = -((2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw))); res[coupl_hbasis_Cwbx][coupl_eftjhu_ghzgs2] = -((2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw))); res[coupl_hbasis_Cwbx][coupl_eftjhu_ghgsgs2] = (2*pow(MW,2)*pow(sw,2))/(pow(e,2)*pow(MZ,2)*(cw - sw));
+                res[coupl_hbasis_tCww][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2)); res[coupl_hbasis_tCww][coupl_eftjhu_ghzgs4] = -((4*sqrt(cw)*pow(sw,3/2))/pow(e,2)); res[coupl_hbasis_tCww][coupl_eftjhu_ghgsgs4] =  -((2*pow(sw,2))/pow(e,2));
+                res[coupl_hbasis_Cza][coupl_eftjhu_ghzgs2] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_hbasis_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_hbasis_Cabx][coupl_eftjhu_ghz1_prime2] = (2*cw*pow(MZ,2)*sw)/(pow(e,2)*(cw - sw)); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghz2] = -((2*cw*sw)/(pow(e,2)*(cw - sw))); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghzgs2] = (2*sqrt(cw)*sqrt(sw))/pow(e,2); res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghgsgs2] = (2*cw*sw)/(pow(e,2)*(cw - sw));
+                res[coupl_hbasis_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_hbasis_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_hbasis_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
+                res[coupl_hbasis_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+	}
+     }
+    else if (basis_output == bEFT_HiggsBasis){
+      if(include_triple_gauge){
+      res.assign(nEFT_HiggsBasis_Include_Triple_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+      		res[coupl_efthbasistrip_dCz][coupl_eftjhu_ghz1] = .5;
+                res[coupl_efthbasistrip_Czbx][coupl_eftjhu_ghz1_prime2] = sw/pow(e,2);
+		res[coupl_efthbasistrip_Czz][coupl_eftjhu_ghz2] = -((2*cw*sw)/pow(e,2));
+                res[coupl_efthbasistrip_tCzz][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2));
+                res[coupl_efthbasistrip_Cza][coupl_eftjhu_ghzgs2] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_efthbasistrip_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_efthbasistrip_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_efthbasistrip_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_efthbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
+                res[coupl_efthbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+		res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghz2] = cw/2; res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghzgs2] = 1/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghgsgs2] = cw/2;
+                res[coupl_efthbasistrip_tKa][coupl_eftjhu_ghz4] = -cw/2; res[coupl_efthbasistrip_tKa][coupl_eftjhu_ghzgs2] = 1/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); res[coupl_efthbasistrip_tKa][coupl_eftjhu_ghz4] = cw/2;
+                res[coupl_efthbasistrip_dKz][coupl_eftjhu_ghz1_prime2] = -(1/(4*(cw - sw))); res[coupl_efthbasistrip_dKz][coupl_eftjhu_ghz4] = (cw*sw)/(-cw + sw); res[coupl_efthbasistrip_dKz][coupl_eftjhu_ghzgs2] = -cw*sw; res[coupl_efthbasistrip_dKz][coupl_eftjhu_ghgsgs2] = -((cw*sw)/(-cw + sw));
+                res[coupl_efthbasistrip_tKz][coupl_eftjhu_ghz4] = sw/2; res[coupl_efthbasistrip_tKz][coupl_eftjhu_ghzgs2] = 1/2 *(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)); res[coupl_efthbasistrip_tKz][coupl_eftjhu_ghgsgs2] = -sw/2;
+                res[coupl_efthbasistrip_dg1z][coupl_eftjhu_ghz1_prime2] = -(1/(2*(cw - sw))); res[coupl_efthbasistrip_dg1z][coupl_eftjhu_ghz4] = sw/(cw - sw); res[coupl_efthbasistrip_dg1z][coupl_eftjhu_ghzgs2] = -(sqrt(sw)/sqrt(cw)); res[coupl_efthbasistrip_dg1z][coupl_eftjhu_ghgsgs2] = sw/(cw-sw);
+      }
+      else{
+      res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
+      		res[coupl_efthbasis_dCz][coupl_eftjhu_ghz1] = .5;
+                res[coupl_efthbasis_Czbx][coupl_eftjhu_ghz1_prime2] = sw/pow(e,2);
+                res[coupl_efthbasis_Czz][coupl_eftjhu_ghz2] = -((2*cw*sw)/pow(e,2));
+                res[coupl_efthbasis_tCzz][coupl_eftjhu_ghz4] = -((2*cw*sw)/pow(e,2));
+                res[coupl_efthbasis_Cza][coupl_eftjhu_ghzgs2] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_efthbasis_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
+                res[coupl_efthbasis_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_efthbasis_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
+                res[coupl_efthbasis_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
+                res[coupl_efthbasis_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+      }
+  }
+}
+  else if (basis_input == bHiggsBasis){	
+    if (basis_output == bAmplitude_JHUGen){
+	if(charged_current==false){
+		res.assign(nAmplitude_JHUGen_Neutral_Current_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
+                res[coupl_ampjhunc_ghz1][coupl_hbasis_dCz] = 2;
+                res[coupl_ampjhunc_ghz1_prime2][coupl_hbasis_Czbx] = (pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw);
+                res[coupl_ampjhunc_ghz2][coupl_hbasis_Czz] = -(pow(e,2)/(2*cw * sw));
+                res[coupl_ampjhunc_ghz4][coupl_hbasis_tCzz] = -(pow(e,2)/(2*cw*sw));
+                res[coupl_ampjhunc_ghzgs1_prime2][coupl_hbasis_Cabx] = (pow(e,2)*pow(Lambda_zgs1,2))/(sqrt(cw)*pow(MZ,2)*sqrt(sw));
+                res[coupl_ampjhunc_ghzgs2][coupl_hbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+                res[coupl_ampjhunc_ghzgs4][coupl_hbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+                res[coupl_ampjhunc_ghgsgs2][coupl_hbasis_Caa] =  -(pow(e,2)/2);
+                res[coupl_ampjhunc_ghgsgs4][coupl_hbasis_tCaa] =  -(pow(e,2)/2);
+                res[coupl_ampjhunc_ghg2][coupl_hbasis_Cgg] = -(pow(gs,2)/2);
+                res[coupl_ampjhunc_ghg4][coupl_hbasis_tCgg] = -(pow(gs,2)/2);
+	}
+	else if (neutral_current==false){
+		res.assign(nAmplitude_JHUGen_Charged_Current_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
+                res[coupl_ampjhucc_ghw1][coupl_hbasis_dCw] = 2;
+                res[coupl_ampjhucc_ghw1_prime2][coupl_hbasis_Cwbx] = (pow(e,2)*pow(Lambda_w1,2))/(pow(MW,2)*sw);
+                res[coupl_ampjhucc_ghw2][coupl_hbasis_Cww] = -(pow(e,2)/(2*sw));
+                res[coupl_ampjhucc_ghw4][coupl_hbasis_tCww] = -(pow(e,2)/(2*sw));
+	}
+	else{
+	        res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
+        	res[coupl_ampjhu_ghz1][coupl_hbasis_dCz] = 2;
+		res[coupl_ampjhu_ghz1_prime2][coupl_hbasis_Czbx] = (pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw);
+		res[coupl_ampjhu_ghz2][coupl_hbasis_Czz] = -(pow(e,2)/(2*cw * sw));
+		res[coupl_ampjhu_ghz4][coupl_hbasis_tCzz] = -(pow(e,2)/(2*cw*sw)); 
+		res[coupl_ampjhu_ghw1][coupl_hbasis_dCw] = 2;
+		res[coupl_ampjhu_ghw1_prime2][coupl_hbasis_Cwbx] = (pow(e,2)*pow(Lambda_w1,2))/(pow(MW,2)*sw);
+		res[coupl_ampjhu_ghw2][coupl_hbasis_Cww] = -(pow(e,2)/(2*sw));
+		res[coupl_ampjhu_ghw4][coupl_hbasis_tCww] = -(pow(e,2)/(2*sw));
+		res[coupl_ampjhu_ghzgs1_prime2][coupl_hbasis_Cabx] = (pow(e,2)*pow(Lambda_zgs1,2))/(sqrt(cw)*pow(MZ,2)*sqrt(sw));
+		res[coupl_ampjhu_ghzgs2][coupl_hbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		res[coupl_ampjhu_ghzgs4][coupl_hbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		res[coupl_ampjhu_ghgsgs2][coupl_hbasis_Caa] =  -(pow(e,2)/2);
+		res[coupl_ampjhu_ghgsgs4][coupl_hbasis_tCaa] =  -(pow(e,2)/2);
+		res[coupl_ampjhu_ghg2][coupl_hbasis_Cgg] = -(pow(gs,2)/2);
+ 		res[coupl_ampjhu_ghg4][coupl_hbasis_tCgg] = -(pow(gs,2)/2);
+	}
     }
     else if (basis_output == bEFT_JHUGen){
-      res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
-      for (size_t i=0; i<(size_t) nEFT_JHUGen_CouplingTypes; i++) res.at(i).at(i)=1;
+      res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
     }
     else if (basis_output == bEFT_HiggsBasis){
-      res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nEFT_JHUGen_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
+      res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0)); 
+    }
+    else if (basis_output == bHiggsBasis){
+      res.assign(nHiggsBasis_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
+      for (size_t i=0; i<(size_t) nHiggsBasis_CouplingTypes; i++) res.at(i).at(i)=1;
     }
   }
   else if (basis_input == bEFT_HiggsBasis){
     if (basis_output == bAmplitude_JHUGen){
-      res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
+    	if(charged_current==false){
+		if(include_triple_gauge){
+			res.assign(nAmplitude_JHUGen_Include_Triple_Neutral_Current_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+			res[coupl_ampjhutripnc_ghz1][coupl_efthbasis_dCz] = 2;
+		        res[coupl_ampjhutripnc_ghz1_prime2][coupl_efthbasis_Czbx] = (pow(e,2))/(sw);
+		        res[coupl_ampjhutripnc_ghz2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*cw*sw));
+		        res[coupl_ampjhutripnc_ghz4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*cw*sw);
+		        res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_efthbasis_Czbx] = (2*sqrt(cw)*pow(e,2))/(sqrt(sw)*(cw - sw)); res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_efthbasis_Czz] = (pow(e,2))/(sqrt(cw)*sqrt(sw)*(cw - sw)); res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_efthbasis_Cza] = -((pow(e,2))/(sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripnc_ghzgs1_prime2][coupl_efthbasis_Caa] = -((sqrt(cw)*pow(e,2)*sqrt(sw))/(cw - sw));
+		        res[coupl_ampjhutripnc_ghzgs2][coupl_efthbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhutripnc_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhutripnc_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
+		        res[coupl_ampjhutripnc_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
+		        res[coupl_ampjhutripnc_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhutripnc_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_Cza] = pow(e,2); res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_Caa] = (cw*pow(e,2)*sw)/(-cw + sw);
+		        res[coupl_ampjhutripnc_dV_A][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhutripnc_dV_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripnc_dV_A][coupl_efthbasis_Caa] = -(1/2)*cw*pow(e,2);
+		        res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+        		res[coupl_ampjhutripnc_dP_A][coupl_efthbasis_dCz] = 1;
+       		        res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))), pow(e,2)/(2*cw); res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+                       //res[coupl_ampjhutrip_dM_A][coupl_efthbasis_dCz] = 1;
+                        res[coupl_ampjhutripnc_dFour_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw)); res[coupl_ampjhutripnc_dFour_Z][coupl_efthbasis_Cza] = -((pow(e,2)*(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripnc_dFour_Z][coupl_efthbasis_tCaa] = (pow(e,2)*sw)/2;
+                        res[coupl_ampjhutripnc_dFour_A][coupl_efthbasis_tCzz] = pow(e,2)/(2*sw); res[coupl_ampjhutripnc_dFour_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripnc_dFour_A][coupl_efthbasis_tCaa] = -(1/2)*cw*pow(e,2);
+                        res[coupl_ampjhutripnc_dZZWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripnc_dZZWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(cw*(cw - sw))); res[coupl_ampjhutripnc_dZZWpWm][coupl_efthbasis_Cza] = pow(e,2)/cw; res[coupl_ampjhutripnc_dZZWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(cw - sw));
+                        res[coupl_ampjhutripnc_dZAWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripnc_dZAWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutripnc_dZAWpWm][coupl_efthbasis_tCza] = pow(e,2)/(2*cw); res[coupl_ampjhutripnc_dZAWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+                	//res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_dCz] = 1;
+   		}//
+		else{
+			res.assign(nAmplitude_JHUGen_Neutral_Current_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+			res[coupl_ampjhunc_ghz1][coupl_efthbasis_dCz] = 2;
+		        res[coupl_ampjhunc_ghz1_prime2][coupl_efthbasis_Czbx] = (pow(e,2))/(sw);
+		        res[coupl_ampjhunc_ghz2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*cw*sw));
+		        res[coupl_ampjhunc_ghz4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*cw*sw);
+		       	res[coupl_ampjhunc_ghzgs1_prime2][coupl_efthbasis_Czbx] = (2*sqrt(cw)*pow(e,2))/(sqrt(sw)*(cw - sw)); res[coupl_ampjhunc_ghzgs1_prime2][coupl_efthbasis_Czz] = (pow(e,2))/(sqrt(cw)*sqrt(sw)*(cw - sw)); res[coupl_ampjhunc_ghzgs1_prime2][coupl_efthbasis_Cza] = -((pow(e,2))/(sqrt(cw)*sqrt(sw))); res[coupl_ampjhunc_ghzgs1_prime2][coupl_efthbasis_Caa] = -((sqrt(cw)*pow(e,2)*sqrt(sw))/(cw - sw));
+		        res[coupl_ampjhunc_ghzgs2][coupl_efthbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhunc_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhunc_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
+		        res[coupl_ampjhunc_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
+		        res[coupl_ampjhunc_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhunc_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		} //
+	} //
+	else if(neutral_current==false){
+		if(include_triple_gauge){
+			res.assign(nAmplitude_JHUGen_Include_Triple_Charged_Current_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+			res[coupl_ampjhutripcc_ghw1][coupl_efthbasis_dCz] = 2;
+			res[coupl_ampjhutripcc_ghw1_prime2][coupl_efthbasis_Czbx] = (pow(e,2)*pow(MW,2))/(pow(MZ,2)*sw*(cw - sw)); res[coupl_ampjhutripcc_ghw1_prime2][coupl_efthbasis_Czz] = (pow(e,2)*pow(MW,2))/(cw*pow(MZ,2)*(cw - sw)); res[coupl_ampjhutripcc_ghw1_prime2][coupl_efthbasis_Cza] = -((pow(e,2)*pow(MW,2))/(cw*pow(MZ,2))); res[coupl_ampjhutripcc_ghw1_prime2][coupl_efthbasis_Caa] = -((pow(e,2)*pow(MW,2)*sw)/(pow(MZ,2)*(cw - sw))); 
+			res[coupl_ampjhutripcc_ghw2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhutripcc_ghw2][coupl_efthbasis_Cza] = -pow(e,2); res[coupl_ampjhutripcc_ghw2][coupl_efthbasis_Caa] = -(1/2)*pow(e,2)*sw;
+			res[coupl_ampjhutripcc_ghw4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*sw); res[coupl_ampjhutripcc_ghw4][coupl_efthbasis_tCza] = -pow(e,2); res[coupl_ampjhutripcc_ghw4][coupl_efthbasis_tCaa] = -(1/2)*pow(e,2)*sw;
+			res[coupl_ampjhutripcc_dV_A][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhutripcc_dV_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripcc_dV_A][coupl_efthbasis_Caa] = -(1/2)*cw*pow(e,2);
+			res[coupl_ampjhutripcc_dP_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripcc_dP_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutripcc_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutripcc_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+			//res[coupl_ampjhutrip_dP_A][coupl_efthbasis_dCz] = 1;
+			res[coupl_ampjhutripcc_dM_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripcc_dM_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))), pow(e,2)/(2*cw); res[coupl_ampjhutripcc_dM_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutripcc_dM_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+			//res[coupl_ampjhutrip_dM_A][coupl_efthbasis_dCz] = 1;
+			res[coupl_ampjhutripcc_dFour_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw)); res[coupl_ampjhutripcc_dFour_Z][coupl_efthbasis_Cza] = -((pow(e,2)*(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripcc_dFour_Z][coupl_efthbasis_tCaa] = (pow(e,2)*sw)/2;
+			res[coupl_ampjhutripcc_dFour_A][coupl_efthbasis_tCzz] = pow(e,2)/(2*sw); res[coupl_ampjhutripcc_dFour_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutripcc_dFour_A][coupl_efthbasis_tCaa] = -(1/2)*cw*pow(e,2);
+			res[coupl_ampjhutripcc_dZZWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripcc_dZZWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(cw*(cw - sw))); res[coupl_ampjhutripcc_dZZWpWm][coupl_efthbasis_Cza] = pow(e,2)/cw; res[coupl_ampjhutripcc_dZZWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(cw - sw));
+		        res[coupl_ampjhutripcc_dZAWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutripcc_dZAWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutripcc_dZAWpWm][coupl_efthbasis_tCza] = pow(e,2)/(2*cw); res[coupl_ampjhutripcc_dZAWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+		//      res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_dCz] = 1;
+
+		} //
+		else{
+			cout<<"yeet";
+			res.assign(nAmplitude_JHUGen_Charged_Current_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+	       		res[coupl_ampjhucc_ghw1][coupl_efthbasis_dCz] = 2;
+		        res[coupl_ampjhucc_ghw1_prime2][coupl_efthbasis_Czbx] = (pow(e,2)*pow(MW,2))/(pow(MZ,2)*sw*(cw - sw)); res[coupl_ampjhucc_ghw1_prime2][coupl_efthbasis_Czz] = (pow(e,2)*pow(MW,2))/(cw*pow(MZ,2)*(cw - sw)); res[coupl_ampjhucc_ghw1_prime2][coupl_efthbasis_Cza] = -((pow(e,2)*pow(MW,2))/(cw*pow(MZ,2))); res[coupl_ampjhucc_ghw1_prime2][coupl_efthbasis_Caa] = -((pow(e,2)*pow(MW,2)*sw)/(pow(MZ,2)*(cw - sw)));
+		        res[coupl_ampjhucc_ghw2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhucc_ghw2][coupl_efthbasis_Cza] = -pow(e,2); res[coupl_ampjhucc_ghw2][coupl_efthbasis_Caa] = -(1/2)*pow(e,2)*sw;
+		        res[coupl_ampjhucc_ghw4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*sw); res[coupl_ampjhucc_ghw4][coupl_efthbasis_tCza] = -pow(e,2); res[coupl_ampjhucc_ghw4][coupl_efthbasis_tCaa] = -(1/2)*pow(e,2)*sw;
+		}
+	}//
+	else{
+		if(include_triple_gauge){
+			res.assign(nAmplitude_JHUGen_Include_Triple_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+      			res[coupl_ampjhutrip_ghz1][coupl_efthbasis_dCz] = 2;
+			res[coupl_ampjhutrip_ghz1_prime2][coupl_efthbasis_Czbx] = (pow(e,2))/(sw);
+			res[coupl_ampjhutrip_ghz2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*cw*sw));
+			res[coupl_ampjhutrip_ghz4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*cw*sw); 
+			res[coupl_ampjhutrip_ghw1][coupl_efthbasis_dCz] = 2;
+			res[coupl_ampjhutrip_ghw1_prime2][coupl_efthbasis_Czbx] = (pow(e,2)*pow(MW,2))/(pow(MZ,2)*sw*(cw - sw)); res[coupl_ampjhutrip_ghw1_prime2][coupl_efthbasis_Czz] = (pow(e,2)*pow(MW,2))/(cw*pow(MZ,2)*(cw - sw)); res[coupl_ampjhutrip_ghw1_prime2][coupl_efthbasis_Cza] = -((pow(e,2)*pow(MW,2))/(cw*pow(MZ,2))); res[coupl_ampjhutrip_ghw1_prime2][coupl_efthbasis_Caa] = -((pow(e,2)*pow(MW,2)*sw)/(pow(MZ,2)*(cw - sw))); 
+			res[coupl_ampjhutrip_ghw2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhutrip_ghw2][coupl_efthbasis_Cza] = -pow(e,2); res[coupl_ampjhutrip_ghw2][coupl_efthbasis_Caa] = -(1/2)*pow(e,2)*sw;
+			res[coupl_ampjhutrip_ghw4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*sw); res[coupl_ampjhutrip_ghw4][coupl_efthbasis_tCza] = -pow(e,2); res[coupl_ampjhutrip_ghw4][coupl_efthbasis_tCaa] = -(1/2)*pow(e,2)*sw;
+			res[coupl_ampjhutrip_ghzgs1_prime2][coupl_efthbasis_Czbx] = (2*sqrt(cw)*pow(e,2))/(sqrt(sw)*(cw - sw)); res[coupl_ampjhutrip_ghzgs1_prime2][coupl_efthbasis_Czz] = (pow(e,2))/(sqrt(cw)*sqrt(sw)*(cw - sw)); res[coupl_ampjhutrip_ghzgs1_prime2][coupl_efthbasis_Cza] = -((pow(e,2))/(sqrt(cw)*sqrt(sw))); res[coupl_ampjhutrip_ghzgs1_prime2][coupl_efthbasis_Caa] = -((sqrt(cw)*pow(e,2)*sqrt(sw))/(cw - sw));
+			res[coupl_ampjhutrip_ghzgs2][coupl_efthbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+			res[coupl_ampjhutrip_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+			res[coupl_ampjhutrip_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
+			res[coupl_ampjhutrip_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
+			res[coupl_ampjhutrip_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
+			res[coupl_ampjhutrip_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+			res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_Cza] = pow(e,2); res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_Caa] = (cw*pow(e,2)*sw)/(-cw + sw);
+			res[coupl_ampjhutrip_dV_A][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhutrip_dV_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutrip_dV_A][coupl_efthbasis_Caa] = -(1/2)*cw*pow(e,2);
+			res[coupl_ampjhutrip_dP_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutrip_dP_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutrip_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutrip_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+			//res[coupl_ampjhutrip_dP_A][coupl_efthbasis_dCz] = 1;
+			res[coupl_ampjhutrip_dM_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutrip_dM_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))), pow(e,2)/(2*cw); res[coupl_ampjhutrip_dM_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_ampjhutrip_dM_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+			//res[coupl_ampjhutrip_dM_A][coupl_efthbasis_dCz] = 1;
+			res[coupl_ampjhutrip_dFour_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw)); res[coupl_ampjhutrip_dFour_Z][coupl_efthbasis_Cza] = -((pow(e,2)*(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutrip_dFour_Z][coupl_efthbasis_tCaa] = (pow(e,2)*sw)/2;
+			res[coupl_ampjhutrip_dFour_A][coupl_efthbasis_tCzz] = pow(e,2)/(2*sw); res[coupl_ampjhutrip_dFour_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_ampjhutrip_dFour_A][coupl_efthbasis_tCaa] = -(1/2)*cw*pow(e,2);
+			res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(cw*(cw - sw))); res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_Cza] = pow(e,2)/cw; res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(cw - sw));
+		        res[coupl_ampjhutrip_dZAWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_ampjhutrip_dZAWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_ampjhutrip_dZAWpWm][coupl_efthbasis_tCza] = pow(e,2)/(2*cw); res[coupl_ampjhutrip_dZAWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+		//      res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_dCz] = 1;
+		}//
+		else{
+			res.assign(nAmplitude_JHUGen_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+			res[coupl_ampjhu_ghz1][coupl_efthbasis_dCz] = 2;
+		        res[coupl_ampjhu_ghz1_prime2][coupl_efthbasis_Czbx] = (pow(e,2))/(sw);
+		        res[coupl_ampjhu_ghz2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*cw*sw));
+		        res[coupl_ampjhu_ghz4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*cw*sw);
+		        res[coupl_ampjhu_ghw1][coupl_efthbasis_dCz] = 2;
+		        res[coupl_ampjhu_ghw1_prime2][coupl_efthbasis_Czbx] = (pow(e,2)*pow(MW,2))/(pow(MZ,2)*sw*(cw - sw)); res[coupl_ampjhu_ghw1_prime2][coupl_efthbasis_Czz] = (pow(e,2)*pow(MW,2))/(cw*pow(MZ,2)*(cw - sw)); res[coupl_ampjhu_ghw1_prime2][coupl_efthbasis_Cza] = -((pow(e,2)*pow(MW,2))/(cw*pow(MZ,2))); res[coupl_ampjhu_ghw1_prime2][coupl_efthbasis_Caa] = -((pow(e,2)*pow(MW,2)*sw)/(pow(MZ,2)*(cw - sw)));
+		        res[coupl_ampjhu_ghw2][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_ampjhu_ghw2][coupl_efthbasis_Cza] = -pow(e,2); res[coupl_ampjhu_ghw2][coupl_efthbasis_Caa] = -(1/2)*pow(e,2)*sw;
+		        res[coupl_ampjhu_ghw4][coupl_efthbasis_tCzz] = -(pow(e,2))/(2*sw); res[coupl_ampjhu_ghw4][coupl_efthbasis_tCza] = -pow(e,2); res[coupl_ampjhu_ghw4][coupl_efthbasis_tCaa] = -(1/2)*pow(e,2)*sw;
+		        res[coupl_ampjhu_ghzgs1_prime2][coupl_efthbasis_Czbx] = (2*sqrt(cw)*pow(e,2))/(sqrt(sw)*(cw - sw)); res[coupl_ampjhu_ghzgs1_prime2][coupl_efthbasis_Czz] = (pow(e,2))/(sqrt(cw)*sqrt(sw)*(cw - sw)); res[coupl_ampjhu_ghzgs1_prime2][coupl_efthbasis_Cza] = -((pow(e,2))/(sqrt(cw)*sqrt(sw))); res[coupl_ampjhu_ghzgs1_prime2][coupl_efthbasis_Caa] = -((sqrt(cw)*pow(e,2)*sqrt(sw))/(cw - sw));
+		        res[coupl_ampjhu_ghzgs2][coupl_efthbasis_Cza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhu_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+		        res[coupl_ampjhu_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
+		        res[coupl_ampjhu_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
+		        res[coupl_ampjhu_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhu_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		}//
+	}//
+    	
+
     }
     else if (basis_output == bEFT_JHUGen){
-      res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
-      /*
-      res = std::vector<std::vector<double>>{
-        {  },
-        {  }
-      };
-      */
+      if(include_triple_gauge){
+        res.assign(nEFT_JHUGen_Include_Triple_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+        res[coupl_eftjhutrip_ghz1][coupl_efthbasis_dCz]= 2;
+	res[coupl_eftjhutrip_ghz1_prime2][coupl_efthbasis_Czbx]= (pow(e,2))/(sw); 
+	res[coupl_eftjhutrip_ghz2][coupl_efthbasis_Czz]= -(pow(e,2))/(2*cw*sw);
+	res[coupl_eftjhutrip_ghz4][coupl_efthbasis_tCzz]= -pow(e,2)/(2*cw*sw); 
+	res[coupl_eftjhutrip_ghzgs2][coupl_efthbasis_Cza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+	res[coupl_eftjhutrip_ghzgs4][coupl_efthbasis_tCza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+	res[coupl_eftjhutrip_ghgsgs2][coupl_efthbasis_Caa]=  -(pow(e,2)/2);
+	res[coupl_eftjhutrip_ghgsgs4][coupl_efthbasis_tCaa]= -(pow(e,2)/2);
+	res[coupl_eftjhutrip_ghg2][coupl_efthbasis_Cgg]= -(pow(gs,2)/2); 
+	res[coupl_eftjhutrip_ghg4][coupl_efthbasis_tCgg]= -(pow(gs,2)/2);
+	res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_Cza] = pow(e,2); res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_Caa] = (cw*pow(e,2)*sw)/(-cw + sw);
+        res[coupl_eftjhutrip_dV_A][coupl_efthbasis_Czz] = -(pow(e,2)/(2*sw)); res[coupl_eftjhutrip_dV_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_eftjhutrip_dV_A][coupl_efthbasis_Caa] = -(1/2)*cw*pow(e,2);
+        res[coupl_eftjhutrip_dP_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_eftjhutrip_dP_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_eftjhutrip_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_eftjhutrip_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+        //res[coupl_ampjhutrip_dP_A][coupl_efthbasis_dCz] = 1;
+        res[coupl_eftjhutrip_dM_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_eftjhutrip_dM_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))), pow(e,2)/(2*cw); res[coupl_eftjhutrip_dM_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res[coupl_eftjhutrip_dM_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+        //res[coupl_ampjhutrip_dM_A][coupl_efthbasis_dCz] = 1;
+        res[coupl_eftjhutrip_dFour_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw)); res[coupl_eftjhutrip_dFour_Z][coupl_efthbasis_Cza] = -((pow(e,2)*(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_eftjhutrip_dFour_Z][coupl_efthbasis_tCaa] = (pow(e,2)*sw)/2;
+        res[coupl_eftjhutrip_dFour_A][coupl_efthbasis_tCzz] = pow(e,2)/(2*sw); res[coupl_eftjhutrip_dFour_A][coupl_efthbasis_Cza] = -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(2*sqrt(cw)*sqrt(sw))); res[coupl_eftjhutrip_dFour_A][coupl_efthbasis_tCaa] = -(1/2)*cw*pow(e,2);
+        res[coupl_eftjhutrip_dZZWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(pow(MZ,2)*sw*(cw - sw))); res[coupl_eftjhutrip_dZZWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(cw*(cw - sw))); res[coupl_eftjhutrip_dZZWpWm][coupl_efthbasis_Cza] = pow(e,2)/cw; res[coupl_eftjhutrip_dZZWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(cw - sw));
+        res[coupl_eftjhutrip_dZAWpWm][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); res[coupl_eftjhutrip_dZAWpWm][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_eftjhutrip_dZAWpWm][coupl_efthbasis_tCza] = pow(e,2)/(2*cw); res[coupl_eftjhutrip_dZAWpWm][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+        //res[coupl_ampjhutrip_dZZWpWm][coupl_efthbasis_dCz] = 1;
+      }
+      else{
+	res.assign(nEFT_JHUGen_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+        res[coupl_eftjhu_ghz1][coupl_efthbasis_dCz]= 2;
+        res[coupl_eftjhu_ghz1_prime2][coupl_efthbasis_Czbx]= (pow(e,2))/(sw);
+        res[coupl_eftjhu_ghz2][coupl_efthbasis_Czz]= -(pow(e,2))/(2*cw*sw);
+        res[coupl_eftjhu_ghz4][coupl_efthbasis_tCzz]= -pow(e,2)/(2*cw*sw);
+        res[coupl_eftjhu_ghzgs2][coupl_efthbasis_Cza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+        res[coupl_eftjhu_ghzgs4][coupl_efthbasis_tCza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
+        res[coupl_eftjhu_ghgsgs2][coupl_efthbasis_Caa]=  -(pow(e,2)/2);
+        res[coupl_eftjhu_ghgsgs4][coupl_efthbasis_tCaa]= -(pow(e,2)/2);
+        res[coupl_eftjhu_ghg2][coupl_efthbasis_Cgg]= -(pow(gs,2)/2);
+        res[coupl_eftjhu_ghg4][coupl_efthbasis_tCgg]= -(pow(gs,2)/2);
+      }
+    }
+    else if (basis_output == bHiggsBasis){
+	if(include_triple_gauge){
+      	  res.assign(nHiggsBasis_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+          res[coupl_hbasistrip_dCz][coupl_efthbasis_dCz]= 1;
+	  res[coupl_hbasistrip_Czz][coupl_efthbasis_Czz]= 1;
+	  res[coupl_hbasistrip_Czbx][coupl_efthbasis_Czbx]= 1;
+	  res[coupl_hbasistrip_tCzz][coupl_efthbasis_tCzz]= 1;
+	  res[coupl_hbasistrip_dCw][coupl_efthbasis_dCz]= 1;
+	  res[coupl_hbasistrip_Cww][coupl_efthbasis_Czz]= 1; res[coupl_hbasistrip_Cww][coupl_efthbasis_Cza]= 2*sw; res[coupl_hbasistrip_Caa][coupl_efthbasis_Czz]= pow(sw,2);
+	  res[coupl_hbasistrip_Cwbx][coupl_efthbasis_Czbx]= pow(MW,2)/(pow(MZ,2)*(cw - sw)); res[coupl_hbasistrip_Cwbx][coupl_efthbasis_Czz]= pow(MW,2)/(pow(MZ,2)*(cw - sw)); res[coupl_hbasistrip_Cwbx][coupl_efthbasis_Cza]= -((pow(MW,2)*sw)/(cw*pow(MZ,2))); res[coupl_hbasistrip_Cwbx][coupl_efthbasis_Caa]= -((pow(MW,2)*pow(sw,2))/(pow(MZ,2)*(cw - sw)));
+	  res[coupl_hbasistrip_tCww][coupl_efthbasis_tCzz]= 1; res[coupl_hbasistrip_tCww][coupl_efthbasis_tCza]= 2*sw; res[coupl_hbasistrip_tCww][coupl_efthbasis_tCaa]= pow(sw,2);
+	  res[coupl_hbasistrip_Cza][coupl_efthbasis_Cza]= 1; 
+	  res[coupl_hbasistrip_tCza][coupl_efthbasis_tCza]= 1;
+	  res[coupl_hbasistrip_Cabx][coupl_efthbasis_Czbx]= (2*cw)/(cw - sw); res[coupl_hbasistrip_Cabx][coupl_efthbasis_Czz]= 1/(cw - sw); res[coupl_hbasistrip_Cabx][coupl_efthbasis_Cza]= -1; res[coupl_hbasistrip_Cabx][coupl_efthbasis_Caa]= -((cw*sw)/(cw - sw));
+	  res[coupl_hbasistrip_Caa][coupl_efthbasis_Caa]= 1;
+	  res[coupl_hbasistrip_tCaa][coupl_efthbasis_tCaa]= 1;
+	  res[coupl_hbasistrip_Cgg][coupl_efthbasis_Cgg]= 1;
+	  res[coupl_hbasistrip_tCgg][coupl_efthbasis_tCgg]= 1;
+	  res[coupl_hbasistrip_dKa][coupl_efthbasis_Czz]= -(pow(e,2)/(4*sw)); res[coupl_hbasistrip_dKa][coupl_efthbasis_Cza]= -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(4*sqrt(cw)*sqrt(sw))); res[coupl_hbasistrip_dKa][coupl_efthbasis_Caa]= -(1/4)*cw*pow(e,2);
+	  res[coupl_hbasistrip_tKa][coupl_efthbasis_tCzz]= pow(e,2)/(4*sw); res[coupl_hbasistrip_tKa][coupl_efthbasis_Cza]= -((pow(e,2)*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)))/(4*sqrt(cw)*sqrt(sw))); res[coupl_hbasistrip_tKa][coupl_efthbasis_tCaa]= -(1/4)*cw*pow(e,2);
+	  res[coupl_hbasistrip_dKz][coupl_efthbasis_Czbx]= -(pow(e,2)/(4*sw*(cw - sw))); res[coupl_hbasistrip_dKz][coupl_efthbasis_tCzz]= -(pow(e,2)/(2*(-cw + sw))); res[coupl_hbasistrip_dKz][coupl_efthbasis_Cza]= pow(e,2)/2; res[coupl_hbasistrip_dKz][coupl_efthbasis_Caa]= (cw*pow(e,2)*sw)/(2*(-cw + sw));
+	  res[coupl_hbasistrip_tKz][coupl_efthbasis_tCzz]= -(pow(e,2)/(4*cw)); res[coupl_hbasistrip_tKz][coupl_efthbasis_Cza]= -((pow(e,2)*(-(sqrt(sw)/sqrt(cw)) + (2*pow(sw,3/2))/sqrt(cw)))/(4*sqrt(cw)*sqrt(sw))); res[coupl_hbasistrip_tKz][coupl_efthbasis_tCaa]= (pow(e,2)*sw)/4;
+	  res[coupl_hbasistrip_dg1z][coupl_efthbasis_Czbx]= -(pow(e,2)/(2*sw*(cw - sw))); res[coupl_hbasistrip_dg1z][coupl_efthbasis_tCzz]= -(pow(e,2)/(2*cw*(cw - sw))); res[coupl_hbasistrip_dg1z][coupl_efthbasis_Cza]= pow(e,2)/(2*cw); res[coupl_hbasistrip_dg1z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+	}
+	else{
+	  res.assign(nHiggsBasis_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
+	  res[coupl_hbasis_dCz][coupl_efthbasis_dCz]= 1;
+          res[coupl_hbasis_Czz][coupl_efthbasis_Czz]= 1;
+          res[coupl_hbasis_Czbx][coupl_efthbasis_Czbx]= 1;
+          res[coupl_hbasis_tCzz][coupl_efthbasis_tCzz]= 1;
+          res[coupl_hbasis_dCw][coupl_efthbasis_dCz]= 1;
+          res[coupl_hbasis_Cww][coupl_efthbasis_Czz]= 1; res[coupl_hbasis_Cww][coupl_efthbasis_Cza]= 2*sw; res[coupl_hbasis_Caa][coupl_efthbasis_Czz]= pow(sw,2);
+          res[coupl_hbasis_Cwbx][coupl_efthbasis_Czbx]= pow(MW,2)/(pow(MZ,2)*(cw - sw)); res[coupl_hbasis_Cwbx][coupl_efthbasis_Czz]= pow(MW,2)/(pow(MZ,2)*(cw - sw)); res[coupl_hbasis_Cwbx][coupl_efthbasis_Cza]= -((pow(MW,2)*sw)/(cw*pow(MZ,2))); res[coupl_hbasis_Cwbx][coupl_efthbasis_Caa]= -((pow(MW,2)*pow(sw,2))/(pow(MZ,2)*(cw - sw)));
+          res[coupl_hbasis_tCww][coupl_efthbasis_tCzz]= 1; res[coupl_hbasis_tCww][coupl_efthbasis_tCza]= 2*sw; res[coupl_hbasis_tCww][coupl_efthbasis_tCaa]= pow(sw,2);
+          res[coupl_hbasis_Cza][coupl_efthbasis_Cza]= 1;
+          res[coupl_hbasis_tCza][coupl_efthbasis_tCza]= 1;
+          res[coupl_hbasis_Cabx][coupl_efthbasis_Czbx]= (2*cw)/(cw - sw); res[coupl_hbasis_Cabx][coupl_efthbasis_Czz]= 1/(cw - sw); res[coupl_hbasis_Cabx][coupl_efthbasis_Cza]= -1; res[coupl_hbasis_Cabx][coupl_efthbasis_Caa]= -((cw*sw)/(cw - sw));
+          res[coupl_hbasis_Caa][coupl_efthbasis_Caa]= 1;
+          res[coupl_hbasis_tCaa][coupl_efthbasis_tCaa]= 1;
+          res[coupl_hbasis_Cgg][coupl_efthbasis_Cgg]= 1;
+          res[coupl_hbasis_tCgg][coupl_efthbasis_tCgg]= 1;         
+	}
     }
     else if (basis_output == bEFT_HiggsBasis){
       res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nEFT_HiggsBasis_CouplingTypes, 0));
@@ -143,21 +690,25 @@ std::vector< std::pair<double, double> > LexiConHCTranslator::getOrderedInputCou
   std::unordered_map<std::string, std::pair<double, double> > const& input_couplings
 ) const{
   bool useMCFMAtInput; getValueWithDefault<std::string, bool>(input_flags, "useMCFMAtInput", useMCFMAtInput, false);
+  bool includeTripleGauge; getValueWithDefault<std::string, bool>(input_flags, "includeTripleGauge", includeTripleGauge, false); 
   bool distinguish_HWWcouplings; getValueWithDefault<std::string, bool>(input_flags, "distinguish_HWWcouplings", distinguish_HWWcouplings, false);
   double MZ; getValueWithDefault<std::string, double>(input_parameters, "MZ", MZ, DEFVAL_MZ);
   double MW; getValueWithDefault<std::string, double>(input_parameters, "MW", MW, DEFVAL_MW);
+  double sw; getValueWithDefault<std::string, double>(input_parameters, "sw", sw, DEFVAL_SW);
+  double cw=1-sw;
   double Lambda_z1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_z1", Lambda_z1, DEFVAL_LAMBDA_VI);
   double Lambda_w1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_w1", Lambda_w1, DEFVAL_LAMBDA_VI);
   double Lambda_zgs1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_zgs1", Lambda_zgs1, DEFVAL_LAMBDA_VI);
 
   std::vector< std::pair<double, double> > res;
+// The last line dFourZ checks and scales the output to what is expected by jhugen
 #define COUPLING_COMMAND(NAME, PREFIX, DEFVAL) \
   getValueWithDefault<std::string, std::pair<double, double>>(input_couplings, #NAME, res.at(coupl_##PREFIX##_##NAME), std::pair<double, double>(DEFVAL, 0)); \
   if (useMCFMAtInput && (std::string(#NAME).find("ghz")!=std::string::npos || std::string(#NAME).find("ghw")!=std::string::npos)){ res.at(coupl_##PREFIX##_##NAME).first *= 2.; res.at(coupl_##PREFIX##_##NAME).second *= 2.; } \
   if (std::string(#NAME).find("ghzgs")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ res.at(coupl_##PREFIX##_##NAME).first *= std::pow(MZ/Lambda_zgs1, 2); res.at(coupl_##PREFIX##_##NAME).second *= std::pow(MZ/Lambda_zgs1, 2); } \
   else if (std::string(#NAME).find("ghz")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ res.at(coupl_##PREFIX##_##NAME).first *= std::pow(MZ/Lambda_z1, 2); res.at(coupl_##PREFIX##_##NAME).second *= std::pow(MZ/Lambda_z1, 2); } \
-  else if (std::string(#NAME).find("ghw")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ res.at(coupl_##PREFIX##_##NAME).first *= std::pow(MW/Lambda_w1, 2); res.at(coupl_##PREFIX##_##NAME).second *= std::pow(MW/Lambda_w1, 2); }
-
+  else if (std::string(#NAME).find("ghw")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ res.at(coupl_##PREFIX##_##NAME).first *= std::pow(MW/Lambda_w1, 2); res.at(coupl_##PREFIX##_##NAME).second *= std::pow(MW/Lambda_w1, 2); } \
+  if (std::string(#NAME).find("dFour_Z")!=std::string::npos){ res.at(coupl_##PREFIX##_##NAME).first *= std::pow(cw/sw, 1); res.at(coupl_##PREFIX##_##NAME).second *= std::pow(cw/sw,1); } 
   switch (basis_input){
   case bAmplitude_JHUGen:
   {
@@ -169,6 +720,12 @@ std::vector< std::pair<double, double> > LexiConHCTranslator::getOrderedInputCou
   {
     res.assign(nEFT_JHUGen_CouplingTypes, std::pair<double, double>(0, 0));
     EFT_JHUGEN_COUPLING_COMMANDS;
+    break;
+  }
+  case bHiggsBasis:
+  {
+    res.assign(nHiggsBasis_CouplingTypes, std::pair<double, double>(0, 0));
+    HIGGSBASIS_COUPLING_COMMANDS;
     break;
   }
   case bEFT_HiggsBasis:
@@ -194,34 +751,76 @@ void LexiConHCTranslator::interpretOutputCouplings(
   std::vector< std::pair<double, double> >& output_vector
 ){
   bool useMCFMAtOutput; getValueWithDefault<std::string, bool>(input_flags, "useMCFMAtOutput", useMCFMAtOutput, false);
-
+  bool include_triple_gauge; getValueWithDefault<std::string, bool>(input_flags, "include_triple_gauge", include_triple_gauge, false);
+  bool charged_current; getValueWithDefault<std::string, bool>(input_flags, "charged_current", charged_current, true);
+  bool neutral_current; getValueWithDefault<std::string, bool>(input_flags, "neutral_current", neutral_current, true);
   double MZ; getValueWithDefault<std::string, double>(input_parameters, "MZ", MZ, DEFVAL_MZ);
   double MW; getValueWithDefault<std::string, double>(input_parameters, "MW", MW, DEFVAL_MW);
   double Lambda_z1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_z1", Lambda_z1, DEFVAL_LAMBDA_VI);
   double Lambda_w1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_w1", Lambda_w1, DEFVAL_LAMBDA_VI);
   double Lambda_zgs1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_zgs1", Lambda_zgs1, DEFVAL_LAMBDA_VI);
-
 #define COUPLING_COMMAND(NAME, PREFIX, DEFVAL) \
   if (useMCFMAtOutput && (std::string(#NAME).find("ghz")!=std::string::npos || std::string(#NAME).find("ghw")!=std::string::npos)){ output_vector.at(coupl_##PREFIX##_##NAME).first /= 2.; output_vector.at(coupl_##PREFIX##_##NAME).second /= 2.; } \
   if (std::string(#NAME).find("ghzgs")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MZ/Lambda_zgs1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MZ/Lambda_zgs1, 2); } \
   else if (std::string(#NAME).find("ghz")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MZ/Lambda_z1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MZ/Lambda_z1, 2); } \
   else if (std::string(#NAME).find("ghw")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MW/Lambda_w1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MW/Lambda_w1, 2); } \
   result_couplings[#NAME] = output_vector.at(coupl_##PREFIX##_##NAME);
-
+  //cout<<include_triple_gauge;
   switch (basis_output){
   case bAmplitude_JHUGen:
   {
-    AMPLITUDE_JHUGEN_COUPLING_COMMANDS;
+    if(include_triple_gauge){
+	if(charged_current==false){
+		AMPLITUDE_JHUGEN_INCLUDE_TRIPLE_NEUTRAL_CURRENT_COUPLING_COMMANDS;
+	}
+	else if(neutral_current==false){
+		AMPLITUDE_JHUGEN_INCLUDE_TRIPLE_CHARGED_CURRENT_COUPLING_COMMANDS;
+	}
+	else{
+    		AMPLITUDE_JHUGEN_INCLUDE_TRIPLE_COUPLING_COMMANDS;
+    	}
+    }
+    else{
+	if(charged_current==false){
+		AMPLITUDE_JHUGEN_NEUTRAL_CURRENT_COUPLING_COMMANDS;
+	}
+	else if(neutral_current==false){
+		AMPLITUDE_JHUGEN_CHARGED_CURRENT_COUPLING_COMMANDS;
+	}
+	else{
+    		AMPLITUDE_JHUGEN_COUPLING_COMMANDS;
+	}
+    }
     break;
   }
   case bEFT_JHUGen:
   {
+    if(include_triple_gauge){
+    EFT_JHUGEN_INCLUDE_TRIPLE_COUPLING_COMMANDS;
+    }
+    else{
     EFT_JHUGEN_COUPLING_COMMANDS;
+    }
+    break;
+  }
+  case bHiggsBasis:
+  {
+    if(include_triple_gauge){
+    HIGGSBASIS_INCLUDE_TRIPLE_COUPLING_COMMANDS;
+    }
+    else{
+    HIGGSBASIS_COUPLING_COMMANDS;
+    }
     break;
   }
   case bEFT_HiggsBasis:
   {
+    if(include_triple_gauge){
+    EFT_HIGGSBASIS_INCLUDE_TRIPLE_COUPLING_COMMANDS;
+    }
+    else{
     EFT_HIGGSBASIS_COUPLING_COMMANDS;
+    }
     break;
   }
   default:

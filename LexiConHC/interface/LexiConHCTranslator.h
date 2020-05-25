@@ -20,6 +20,7 @@ protected:
 
   std::vector<std::vector<double>> getTranslationMatrix(
     LexiConHCIOHelpers::IOBasisType const& basis_input, LexiConHCIOHelpers::IOBasisType const& basis_output,
+    std::unordered_map<std::string, bool> const& input_flags,
     std::unordered_map<std::string, double> const& input_parameters
   ) const;
 
