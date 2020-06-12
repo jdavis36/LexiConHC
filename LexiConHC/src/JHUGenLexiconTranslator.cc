@@ -58,6 +58,7 @@ void JHUGenLexiconTranslator::translate(){
      // forcing the d2 gamma d3.0 gamma to be 1.0
      voutput.at(coupl_ampjhutrip_dP_A).first = 1.0;
      voutput.at(coupl_ampjhutrip_dM_A).first = 1.0;
+     voutput.at(coupl_ampjhutrip_dAAWpWm).first = 1.0;
   }
   else if(basis_input == bEFT_JHUGen && basis_output == bEFT_JHUGen && include_triple_quartic_gauge){
      voutput.at(coupl_eftjhutrip_dV_Z).first += 1.0;
@@ -65,9 +66,10 @@ void JHUGenLexiconTranslator::translate(){
      voutput.at(coupl_eftjhutrip_dP_Z).first += 1.0;
      voutput.at(coupl_eftjhutrip_dM_Z).first += 1.0;
      voutput.at(coupl_eftjhutrip_dZZWpWm).first -= 1.0;
-     // forcing the d2 gamma d3.0 gamma to be 1.0
+     // forcing the d2 gamma d3.0 gamma to be 1.0 as well as dAAWpWm
      voutput.at(coupl_eftjhutrip_dP_A).first = 1.0;
      voutput.at(coupl_eftjhutrip_dM_A).first = 1.0;
+     voutput.at(coupl_eftjhutrip_dAAWpWm).first = 1.0;
   }
   else if (basis_input == bEFT_JHUGen && basis_output == bHiggsBasis && !include_triple_quartic_gauge){
      voutput.at(coupl_hbasis_dCz).first -= 1.0;
@@ -140,11 +142,9 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
   bool charged_current; getValueWithDefault<std::string, bool>(input_flags, "charged_current", charged_current, true);
   bool neutral_current; getValueWithDefault<std::string, bool>(input_flags, "neutral_current", neutral_current, true);
   double alpha; getValueWithDefault<std::string, double>(input_parameters, "alpha", alpha, DEFVAL_ALPHA);
-  double alpha_s; getValueWithDefault<std::string, double>(input_parameters, "alpha_s", alpha_s, DEFVAL_ALPHA_S);
   double sw; getValueWithDefault<std::string, double>(input_parameters, "sin2ThetaW", sw, DEFVAL_SW);
   const double pi = 3.14159265358979323846;
   double e = sqrt(4*pi*alpha);
-  double gs = sqrt(4*pi*alpha_s);
   double cw = 1.0-sw;  
   double MZ; getValueWithDefault<std::string, double>(input_parameters, "MZ", MZ, DEFVAL_MZ);
   double MW; getValueWithDefault<std::string, double>(input_parameters, "MW", MW, DEFVAL_MW);
@@ -178,8 +178,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
       res[coupl_hbasis_Cabx][coupl_ampjhu_ghzgs1_prime2]= (sqrt(cw)*sqrt(sw))/pow(e,2);
       res[coupl_hbasis_Caa][coupl_ampjhu_ghgsgs2]= -2/pow(e,2);
       res[coupl_hbasis_tCaa][coupl_ampjhu_ghgsgs4]= -2/pow(e,2);
-      res[coupl_hbasis_Cgg][coupl_ampjhu_ghg2]= -2/pow(gs,2);
-      res[coupl_hbasis_tCgg][coupl_ampjhu_ghg4]= -2/pow(gs,2);
+      res[coupl_hbasis_Cgg][coupl_ampjhu_ghg2]= -2/1.0;
+      res[coupl_hbasis_tCgg][coupl_ampjhu_ghg4]= -2/1.0;
     }
     else if (basis_output == bEFT_HiggsBasis){
       res.assign(nEFT_HiggsBasis_CouplingTypes, std::vector<double>(nAmplitude_JHUGen_CouplingTypes, 0));
@@ -479,8 +479,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghgsgs2] = (2*cw*sw)/(pow(e,2)*(cw - sw));
 		res[coupl_hbasistrip_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));                
 		res[coupl_hbasistrip_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));                
-		res[coupl_hbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);                
-		res[coupl_hbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);                
+		res[coupl_hbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/1.0;                
+		res[coupl_hbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/1.0;                
       		res[coupl_hbasistrip_dKa][coupl_eftjhu_ghz2] = cw/2; 
 		res[coupl_hbasistrip_dKa][coupl_eftjhu_ghzgs2] = 1.0/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); 
 		res[coupl_hbasistrip_dKa][coupl_eftjhu_ghgsgs2] = cw/2;         
@@ -524,8 +524,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		res[coupl_hbasistrip_Cabx][coupl_eftjhu_ghgsgs2] = (2*cw*sw)/(pow(e,2)*(cw - sw));
                 res[coupl_hbasis_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
                 res[coupl_hbasis_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
-                res[coupl_hbasis_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
-                res[coupl_hbasis_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+                res[coupl_hbasis_Cgg][coupl_eftjhu_ghg2] = -2/1.0;
+                res[coupl_hbasis_tCgg][coupl_eftjhu_ghg4] = -2/1.0;
 	}
      }
     else if (basis_output == bEFT_HiggsBasis){
@@ -539,8 +539,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
                 res[coupl_efthbasistrip_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
                 res[coupl_efthbasistrip_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
                 res[coupl_efthbasistrip_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
-                res[coupl_efthbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
-                res[coupl_efthbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+                res[coupl_efthbasistrip_Cgg][coupl_eftjhu_ghg2] = -2/1.0;
+                res[coupl_efthbasistrip_tCgg][coupl_eftjhu_ghg4] = -2/1.0;
 		res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghz2] = cw/2; 
 		res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghzgs2] = 1.0/2*(sqrt(cw)/sqrt(sw) - 2*sqrt(cw)*sqrt(sw)); 
 		res[coupl_efthbasistrip_dKa][coupl_eftjhu_ghgsgs2] = cw/2;
@@ -569,8 +569,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
                 res[coupl_efthbasis_tCza][coupl_eftjhu_ghzgs4] = -((2*sqrt(cw)*sqrt(sw))/pow(e,2));
                 res[coupl_efthbasis_Caa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
                 res[coupl_efthbasis_tCaa][coupl_eftjhu_ghgsgs2] = -(2/pow(e,2));
-                res[coupl_efthbasis_Cgg][coupl_eftjhu_ghg2] = -2/pow(gs,2);
-                res[coupl_efthbasis_tCgg][coupl_eftjhu_ghg4] = -2/pow(gs,2);
+                res[coupl_efthbasis_Cgg][coupl_eftjhu_ghg2] = -2/1.0;
+                res[coupl_efthbasis_tCgg][coupl_eftjhu_ghg4] = -2/1.0;
       }
   }
 }
@@ -587,8 +587,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
                 res[coupl_ampjhunc_ghzgs4][coupl_hbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
                 res[coupl_ampjhunc_ghgsgs2][coupl_hbasis_Caa] =  -(pow(e,2)/2);
                 res[coupl_ampjhunc_ghgsgs4][coupl_hbasis_tCaa] =  -(pow(e,2)/2);
-                res[coupl_ampjhunc_ghg2][coupl_hbasis_Cgg] = -(pow(gs,2)/2);
-                res[coupl_ampjhunc_ghg4][coupl_hbasis_tCgg] = -(pow(gs,2)/2);
+                res[coupl_ampjhunc_ghg2][coupl_hbasis_Cgg] = -(1.0/2);
+                res[coupl_ampjhunc_ghg4][coupl_hbasis_tCgg] = -(1.0/2);
 	}
 	else if (neutral_current==false){
 		res.assign(nAmplitude_JHUGen_Charged_Current_CouplingTypes, std::vector<double>(nHiggsBasis_CouplingTypes, 0));
@@ -612,8 +612,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		res[coupl_ampjhu_ghzgs4][coupl_hbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 		res[coupl_ampjhu_ghgsgs2][coupl_hbasis_Caa] =  -(pow(e,2)/2);
 		res[coupl_ampjhu_ghgsgs4][coupl_hbasis_tCaa] =  -(pow(e,2)/2);
-		res[coupl_ampjhu_ghg2][coupl_hbasis_Cgg] = -(pow(gs,2)/2);
- 		res[coupl_ampjhu_ghg4][coupl_hbasis_tCgg] = -(pow(gs,2)/2);
+		res[coupl_ampjhu_ghg2][coupl_hbasis_Cgg] = -(1.0/2);
+ 		res[coupl_ampjhu_ghg4][coupl_hbasis_tCgg] = -(1.0/2);
 	}
     }
     else if (basis_output == bEFT_JHUGen){
@@ -644,8 +644,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		        res[coupl_ampjhutripnc_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 		        res[coupl_ampjhutripnc_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
 		        res[coupl_ampjhutripnc_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
-		        res[coupl_ampjhutripnc_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
-		        res[coupl_ampjhutripnc_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhutripnc_ghg2][coupl_efthbasis_Cgg] = -(1.0/2);
+		        res[coupl_ampjhutripnc_ghg4][coupl_efthbasis_tCgg] = -(1.0/2);
 		        res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); 
 			res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); 
 			res[coupl_ampjhutripnc_dV_Z][coupl_efthbasis_Cza] = pow(e,2); 
@@ -655,9 +655,9 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 			res[coupl_ampjhutripnc_dV_A][coupl_efthbasis_Caa] = -(1.0/2)*cw*pow(e,2);
 		        res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); 
 			res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))); 
-			res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); res
-			[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
-        		res[coupl_ampjhutripnc_dP_A][coupl_efthbasis_dCz] = 1.0;
+			res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); 
+			res[coupl_ampjhutripnc_dP_Z][coupl_efthbasis_Caa] = -((pow(e,2)*sw)/(2*(cw - sw)));
+        		//res[coupl_ampjhutripnc_dP_A][coupl_efthbasis_dCz] = 1.0;
        		        res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); 
 			res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(2*cw*(cw - sw))), pow(e,2)/(2*cw); 
 			res[coupl_ampjhutripnc_dM_Z][coupl_efthbasis_Cza] = pow(e,2)/(2*cw); 
@@ -693,8 +693,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		        res[coupl_ampjhunc_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 		        res[coupl_ampjhunc_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
 		        res[coupl_ampjhunc_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
-		        res[coupl_ampjhunc_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
-		        res[coupl_ampjhunc_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhunc_ghg2][coupl_efthbasis_Cgg] = -(1.0/2);
+		        res[coupl_ampjhunc_ghg4][coupl_efthbasis_tCgg] = -(1.0/2);
 		} //
 	} //
 	else if(neutral_current==false){
@@ -782,8 +782,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 			res[coupl_ampjhutrip_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 			res[coupl_ampjhutrip_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
 			res[coupl_ampjhutrip_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
-			res[coupl_ampjhutrip_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
-			res[coupl_ampjhutrip_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+			res[coupl_ampjhutrip_ghg2][coupl_efthbasis_Cgg] = -(1.0/2);
+			res[coupl_ampjhutrip_ghg4][coupl_efthbasis_tCgg] = -(1.0/2);
 			res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); 
 			res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); 
 			res[coupl_ampjhutrip_dV_Z][coupl_efthbasis_Cza] = pow(e,2); 
@@ -842,8 +842,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 		        res[coupl_ampjhu_ghzgs4][coupl_efthbasis_tCza] = -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 		        res[coupl_ampjhu_ghgsgs2][coupl_efthbasis_Caa] = -(pow(e,2)/2);
 		        res[coupl_ampjhu_ghgsgs4][coupl_efthbasis_tCaa] = -(pow(e,2)/2);
-		        res[coupl_ampjhu_ghg2][coupl_efthbasis_Cgg] = -(pow(gs,2)/2);
-		        res[coupl_ampjhu_ghg4][coupl_efthbasis_tCgg] = -(pow(gs,2)/2);
+		        res[coupl_ampjhu_ghg2][coupl_efthbasis_Cgg] = -(1.0/2);
+		        res[coupl_ampjhu_ghg4][coupl_efthbasis_tCgg] = -(1.0/2);
 		}//
 	}//
     	
@@ -860,8 +860,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
 	res[coupl_eftjhutrip_ghzgs4][coupl_efthbasis_tCza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
 	res[coupl_eftjhutrip_ghgsgs2][coupl_efthbasis_Caa]=  -(pow(e,2)/2);
 	res[coupl_eftjhutrip_ghgsgs4][coupl_efthbasis_tCaa]= -(pow(e,2)/2);
-	res[coupl_eftjhutrip_ghg2][coupl_efthbasis_Cgg]= -(pow(gs,2)/2); 
-	res[coupl_eftjhutrip_ghg4][coupl_efthbasis_tCgg]= -(pow(gs,2)/2);
+	res[coupl_eftjhutrip_ghg2][coupl_efthbasis_Cgg]= -(1.0/2); 
+	res[coupl_eftjhutrip_ghg4][coupl_efthbasis_tCgg]= -(1.0/2);
 	res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_Czbx] = -((pow(e,2)*pow(Lambda_z1,2))/(2*pow(MZ,2)*sw*(cw - sw))); 
 	res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_tCzz] = -(pow(e,2)/(-cw + sw)); 
 	res[coupl_eftjhutrip_dV_Z][coupl_efthbasis_Cza] = pow(e,2); 
@@ -905,8 +905,8 @@ std::vector<std::vector<double>> JHUGenLexiconTranslator::getTranslationMatrix(
         res[coupl_eftjhu_ghzgs4][coupl_efthbasis_tCza]= -(pow(e,2)/(2*sqrt(cw)*sqrt(sw)));
         res[coupl_eftjhu_ghgsgs2][coupl_efthbasis_Caa]=  -(pow(e,2)/2);
         res[coupl_eftjhu_ghgsgs4][coupl_efthbasis_tCaa]= -(pow(e,2)/2);
-        res[coupl_eftjhu_ghg2][coupl_efthbasis_Cgg]= -(pow(gs,2)/2);
-        res[coupl_eftjhu_ghg4][coupl_efthbasis_tCgg]= -(pow(gs,2)/2);
+        res[coupl_eftjhu_ghg2][coupl_efthbasis_Cgg]= -1.0/2;
+        res[coupl_eftjhu_ghg4][coupl_efthbasis_tCgg]= -1.0/2;
       }
     }
     else if (basis_output == bHiggsBasis){
@@ -1067,9 +1067,6 @@ void JHUGenLexiconTranslator::interpretOutputCouplings(
   bool include_triple_quartic_gauge; getValueWithDefault<std::string, bool>(input_flags, "include_triple_quartic_gauge", include_triple_quartic_gauge, false);
   bool charged_current; getValueWithDefault<std::string, bool>(input_flags, "charged_current", charged_current, true);
   bool neutral_current; getValueWithDefault<std::string, bool>(input_flags, "neutral_current", neutral_current, true);
-  double alpha_s; getValueWithDefault<std::string, double>(input_parameters, "alpha_s", alpha_s, DEFVAL_ALPHA_S);
-  const double pi = 3.14159265358979323846;
-  double gs = sqrt(4*pi*alpha_s);
   double MZ; getValueWithDefault<std::string, double>(input_parameters, "MZ", MZ, DEFVAL_MZ);
   double MW; getValueWithDefault<std::string, double>(input_parameters, "MW", MW, DEFVAL_MW);
   double Lambda_z1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_z1", Lambda_z1, DEFVAL_LAMBDA_VI);
@@ -1077,7 +1074,6 @@ void JHUGenLexiconTranslator::interpretOutputCouplings(
   double Lambda_zgs1; getValueWithDefault<std::string, double>(input_parameters, "Lambda_zgs1", Lambda_zgs1, DEFVAL_LAMBDA_VI);
 #define COUPLING_COMMAND(NAME, PREFIX, DEFVAL) \
   if (useMCFMAtOutput && (std::string(#NAME).find("ghz")!=std::string::npos || std::string(#NAME).find("ghw")!=std::string::npos)){ output_vector.at(coupl_##PREFIX##_##NAME).first /= 2.; output_vector.at(coupl_##PREFIX##_##NAME).second /= 2.; } \
-  if (useMCFMAtOutput && std::string(#NAME).find("ghg")!=std::string::npos){output_vector.at(coupl_##PREFIX##_##NAME).first /= pow(gs,2); output_vector.at(coupl_##PREFIX##_##NAME).second /= pow(gs,2); } \
   if (std::string(#NAME).find("ghzgs")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MZ/Lambda_zgs1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MZ/Lambda_zgs1, 2); } \
   else if (std::string(#NAME).find("ghz")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MZ/Lambda_z1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MZ/Lambda_z1, 2); } \
   else if (std::string(#NAME).find("ghw")!=std::string::npos && std::string(#NAME).find("prime2")!=std::string::npos){ output_vector.at(coupl_##PREFIX##_##NAME).first /= std::pow(MW/Lambda_w1, 2); output_vector.at(coupl_##PREFIX##_##NAME).second /= std::pow(MW/Lambda_w1, 2); } \

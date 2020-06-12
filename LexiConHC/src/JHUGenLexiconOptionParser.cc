@@ -124,7 +124,6 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   cout << "\t MW (default = " << DEFVAL_MW << ")\n";
   cout << "\t sin2ThetaW (default = " << DEFVAL_SW << ")\n";
   cout << "\t alpha (default = " << DEFVAL_ALPHA << ")\n";
-  cout << "\t alpha_s (default = " << DEFVAL_ALPHA_S << ")\n";
   cout << endl;
   if (command_fail) throw std::exception();
 }
