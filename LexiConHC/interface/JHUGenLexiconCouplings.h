@@ -8,7 +8,7 @@
 #define DEFVAL_MW 80.399
 #define DEFVAL_SW 0.23119 //Actually is SW^2
 #define DEFVAL_LAMBDA_VI 10000.
-#define DEFVAL_ALPHA .3028619 //Used to set e^2
+#define DEFVAL_ALPHA .0072973525693 //Used to set e^2
 
 // Coupling definitions
 // Added gluon couplings that appear in H->VV
