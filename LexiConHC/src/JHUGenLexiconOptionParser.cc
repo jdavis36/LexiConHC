@@ -115,6 +115,8 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   HIGGSBASIS_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the Higgs basis EFT formalism:\n";
   EFT_HIGGSBASIS_COUPLING_COMMANDS;
+  cout << "- Allowed couplings for the Warsaw basis EFT formalism:\n";
+  WARSAWBASIS_COUPLING_COMMANDS;
 #undef COUPLING_COMMAND
   cout << "- Allowed parameters:\n";
   cout << "\t Lambda_z1 (default = " << DEFVAL_LAMBDA_VI << ")\n";
@@ -124,6 +126,7 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   cout << "\t MW (default = " << DEFVAL_MW << ")\n";
   cout << "\t sin2ThetaW (default = " << DEFVAL_SW << ")\n";
   cout << "\t alpha (default = " << DEFVAL_ALPHA << ")\n";
+  cout << "\t alpha_s (default - "<< DEFVAL_ALPHA_S << ")\n";
   cout << endl;
   if (command_fail) throw std::exception();
 }
