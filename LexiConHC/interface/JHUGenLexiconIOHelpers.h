@@ -10,12 +10,8 @@ namespace JHUGenLexiconIOHelpers{
     bEFT_JHUGen,
     bEFT_HiggsBasis,
     bHiggsBasis,
-    bAmplitude_JHUGen_trip,
-    bEFT_JHUGen_trip,
-    bEFT_HiggsBasis_trip,
-    bHiggsBasis_trip,
-    
-
+    bWarsawBasis,
+   
     nIOBases
   };
 
