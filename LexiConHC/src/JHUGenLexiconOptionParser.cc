@@ -74,8 +74,6 @@ void JHUGenLexiconOptionParser::interpretOption(std::string const& wish, std::st
   else if (wish=="useMCFMAtOutput"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
   else if (wish=="distinguish_HWWcouplings"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
   else if (wish=="include_triple_quartic_gauge"){ flags[wish] = false; castStringToValue(value, flags[wish]); }
-  else if (wish=="charged_current"){flags[wish] = true; castStringToValue(value, flags[wish]);}
-  else if (wish=="neutral_current"){flags[wish] = true; castStringToValue(value, flags[wish]);}
   // Parameters come next, check if a comma is not found to assign them
   else if (value.find(",")==std::string::npos) parameters[wish] = stod(value);
 
@@ -101,8 +99,6 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   cout << "- useMCFMAtOutput: Use MCFM conventions in the output JHUGen couplings. Divides the ghv* couplings by 2.\n\n";
   cout << "- distinguish_HWWcouplings: Distinguish HZZ and HWW couplings in the JHUGen amplitude basis if it is the input. Default is false.\n\n";
   cout << "- include_triple_quartic_gauge: Return triple gauge couplings. Default is false.\n\n";
-  cout << "- charged_current: Return couplings involving charged current interactions. Default is true.\n\n";
-  cout << "- neutral_current: Return couplings involving charged current interactions. Default is true.\n\n";
 
   cout << "- The format to set any parameter is [specifier]=[value].\n\n";
   cout << "- The format to set any coupling [specifier] to the complex number ([vRe], [vIm]) is [specifier]=[vRe],[vIm].\n\n";
@@ -115,6 +111,8 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   HIGGSBASIS_COUPLING_COMMANDS;
   cout << "- Allowed couplings for the Higgs basis EFT formalism:\n";
   EFT_HIGGSBASIS_COUPLING_COMMANDS;
+  cout << "- Allowed couplings for the Warsaw basis EFT formalism:\n";
+  WARSAWBASIS_COUPLING_COMMANDS;
 #undef COUPLING_COMMAND
   cout << "- Allowed parameters:\n";
   cout << "\t Lambda_z1 (default = " << DEFVAL_LAMBDA_VI << ")\n";
@@ -124,6 +122,8 @@ void JHUGenLexiconOptionParser::printOptionsHelp(bool command_fail)const{
   cout << "\t MW (default = " << DEFVAL_MW << ")\n";
   cout << "\t sin2ThetaW (default = " << DEFVAL_SW << ")\n";
   cout << "\t alpha (default = " << DEFVAL_ALPHA << ")\n";
+  cout << "\t alpha_s (default - "<< DEFVAL_ALPHA_S << ")\n";
+  cout << "\t vev_lam (defaul - "<< DEFVAL_VEV_LAM << ")\n";
   cout << endl;
   if (command_fail) throw std::exception();
 }
