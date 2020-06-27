@@ -27,40 +27,6 @@ std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::Ampl
     assert(0);
   }
 }
-// Charged and Neutral Current options (Will only be seen on output)
-std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::Amplitude_JHUGen_Neutral_Current_CouplingType type){
-  switch (type){
-    AMPLITUDE_JHUGEN_NEUTRAL_CURRENT_COUPLING_COMMANDS
-  default:
-    cerr << "JHUGenLexiconCouplings::getCouplingName: Type " << type << " is undefined." << endl;
-    assert(0);
-  }
-}
-std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::Amplitude_JHUGen_Charged_Current_CouplingType type){
-  switch (type){
-    AMPLITUDE_JHUGEN_CHARGED_CURRENT_COUPLING_COMMANDS
-  default:
-    cerr << "JHUGenLexiconCouplings::getCouplingName: Type " << type << " is undefined." << endl;
-    assert(0);
-  }
-}
-std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::Amplitude_JHUGen_Include_Triple_Charged_Current_CouplingType type){
-  switch (type){
-    AMPLITUDE_JHUGEN_INCLUDE_TRIPLE_CHARGED_CURRENT_COUPLING_COMMANDS
-  default:
-    cerr << "JHUGenLexiconCouplings::getCouplingName: Type " << type << " is undefined." << endl;
-    assert(0);
-  }
-}
-std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::Amplitude_JHUGen_Include_Triple_Neutral_Current_CouplingType type){
-  switch (type){
-    AMPLITUDE_JHUGEN_INCLUDE_TRIPLE_NEUTRAL_CURRENT_COUPLING_COMMANDS
-  default:
-    cerr << "JHUGenLexiconCouplings::getCouplingName: Type " << type << " is undefined." << endl;
-    assert(0);
-  }
-}
-
 std::string JHUGenLexiconCouplings::getCouplingName(JHUGenLexiconCouplings::EFT_JHUGen_CouplingType type){
   switch (type){
     EFT_JHUGEN_COUPLING_COMMANDS
